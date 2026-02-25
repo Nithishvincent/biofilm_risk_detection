@@ -30,18 +30,18 @@ THINGSPEAK_URL = f"https://api.thingspeak.com/update?api_key={THINGSPEAK_API_KEY
 MODEL_PATH = "biofilm_hybrid_model"
 SCALER_PATH = "scaler_hybrid.pkl"
 
-print("Loading Hybrid Ensemble Model (RF + XGB + LSTM)...")
+MODEL_LOADED = False
 try:
     predictor = HybridBiofilmPredictor()
     predictor.load(MODEL_PATH)
     scaler = joblib.load(SCALER_PATH)
+    MODEL_LOADED = True
     print("✅ Model & Scaler Loaded Successfully.")
 except Exception as e:
     print(f"❌ Error loading model: {e}")
-    # Fallback to simulation? Or exit?
-    # Let's exit to force user to fix model if missing
-    # exit(1) 
-    print("Warning: Continuing without model (predictions will be 0).")
+    print("⚠️  Warning: Continuing in sensor-data-only mode (risk will be 0 until model is available).")
+    predictor = None
+    scaler = None
 
 # History Buffer for Time-Series (Sequence Length = 10)
 SEQUENCE_LENGTH = 10
@@ -150,38 +150,31 @@ try:
         status_code = 1 # Healthy
         ensemble_debug = None
 
-        if len(history_buffer) == SEQUENCE_LENGTH:
+        if len(history_buffer) == SEQUENCE_LENGTH and MODEL_LOADED:
             # Prepare Input
-            # 1. Convert to numpy
-            seq_array = np.array(history_buffer) # Shape (10, 6)
-            
-            # 2. Scale
-            # Note: scaler expects (n_samples, n_features). Here (10, 6).
-            seq_scaled = scaler.transform(seq_array)
-            
-            # 3. Reshape for Model: (1, 10, 6)
-            input_seq = seq_scaled.reshape(1, SEQUENCE_LENGTH, len(FEATURES_ORDER))
-            
-            # 4. Predict
-            # Returns: final_pred(float), (rf, xgb, lstm)
+            seq_array = np.array(history_buffer)           # Shape (10, 6)
+            seq_scaled = scaler.transform(seq_array)       # Scale to [0,1]
+            input_seq = seq_scaled.reshape(1, SEQUENCE_LENGTH, len(FEATURES_ORDER))  # (1, 10, 6)
+
             try:
                 pred_val, (p_rf, p_xgb, p_lstm) = predictor.predict(input_seq)
-                
-                # pred_val might be a numpy array or float
                 risk = float(pred_val if np.isscalar(pred_val) else pred_val[0])
+                risk = max(0.0, min(100.0, risk))  # Clamp to valid range
                 ensemble_debug = (p_rf, p_xgb, p_lstm)
-                
-                # Smart status
-                if risk < 40: status_code = 1     # Healthy
+
+                if risk < 40:   status_code = 1   # Healthy
                 elif risk < 70: status_code = 2   # Warning
-                else: status_code = 3             # Critical
-                
+                else:           status_code = 3   # Critical
+
             except Exception as e:
-                print(f"Prediction Error: {e}")
-                
+                print(f"❌ Prediction Error: {e}")
+
+        elif not MODEL_LOADED:
+            print(f"⚠️  Model not loaded — skipping prediction. Sensor data still uploaded.")
+            risk = 0
         else:
             print(f"⏳ Gathering history... ({len(history_buffer)}/{SEQUENCE_LENGTH})")
-            risk = 0 # Calibrating
+            risk = 0
 
         # Upload
         send_to_thingspeak(raw_data, risk, status_code, ensemble_debug)

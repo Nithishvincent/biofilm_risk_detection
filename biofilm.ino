@@ -25,8 +25,8 @@ DHT dht(DHTPIN, DHTTYPE);
 float temperature = 0;
 float humidity = 0;
 float phValue = 0;
-float turbidityValue = 0;
-float tdsValue = 0;
+float turbidityNTU = 0;   // Converted to NTU
+float tdsValue_ppm = 0;   // Converted to ppm
 
 /* ================= FLOW ================= */
 volatile uint32_t flowPulses = 0;
@@ -41,14 +41,13 @@ void IRAM_ATTR flowISR() {
 /* ================= STATUS API ================= */
 void handleStatus() {
   String json = "{";
-  json += "\"ph\":" + String(phValue, 2) + ",";
-  json += "\"temperature\":" + String(temperature, 1) + ",";
-  json += "\"humidity\":" + String(humidity, 1) + ",";
-  json += "\"flow\":" + String(flowRate, 2) + ",";
-  json += "\"turbidity\":" + String(turbidityValue) + ",";
-  json += "\"tds\":" + String(tdsValue);
+  json += "\"ph\":"          + String(phValue, 2)       + ",";
+  json += "\"temperature\":" + String(temperature, 1)   + ",";
+  json += "\"humidity\":"    + String(humidity, 1)       + ",";
+  json += "\"flow\":"        + String(flowRate, 2)       + ",";
+  json += "\"turbidity\":"   + String(turbidityNTU, 1)  + ",";
+  json += "\"tds\":"         + String(tdsValue_ppm, 1);
   json += "}";
-
   server.send(200, "application/json", json);
 }
 
@@ -110,26 +109,42 @@ void loop() {
     humidity = h;
   }
 
-  /* ===== Analog ===== */
-  turbidityValue = analogRead(TURBIDITY_PIN);
-  tdsValue = analogRead(TDS_PIN);
+  /* ===== Analog - Turbidity (SEN0189) ===== */
+  // Raw ADC 0-4095 (12-bit). SEN0189: higher ADC = cleaner water.
+  // Approximate: NTU = 3000 * (1 - (adcRaw / 4095.0))
+  int rawTurb = analogRead(TURBIDITY_PIN);
+  turbidityNTU = max(0.0f, 3000.0f * (1.0f - (rawTurb / 4095.0f)));
 
-  /* ===== Flow ===== */
+  /* ===== Analog - TDS (SEN0244) ===== */
+  // Raw ADC -> Voltage -> ppm using empirical formula
+  // V = adcRaw * (3.3 / 4095)
+  // ppm ≈ (133.42 * V^3 - 255.86 * V^2 + 857.39 * V) * 0.5
+  int rawTDS = analogRead(TDS_PIN);
+  float voltage = rawTDS * (3.3f / 4095.0f);
+  tdsValue_ppm = (133.42f * voltage * voltage * voltage
+                - 255.86f * voltage * voltage
+                + 857.39f * voltage) * 0.5f;
+  tdsValue_ppm = max(0.0f, tdsValue_ppm);
+
+  /* ===== Flow Rate (YF-S201 Hall-effect) ===== */
+  // YF-S201 calibration: 7.5 pulses per second = 1 L/min
+  // Measure pulses over 1 second window -> divide by 7.5 -> L/min
   if (millis() - lastFlowMillis >= 1000) {
     noInterrupts();
-    flowRate = flowPulses;
+    uint32_t pulses = flowPulses;
     flowPulses = 0;
     interrupts();
+    flowRate = pulses / 7.5f;  // Convert pulses/sec to L/min
     lastFlowMillis = millis();
   }
 
   /* ===== Serial Output ===== */
-  Serial.print("pH: "); Serial.print(phValue, 2);
-  Serial.print(" | T: "); Serial.print(temperature);
-  Serial.print(" | H: "); Serial.print(humidity);
-  Serial.print(" | Flow: "); Serial.print(flowRate);
-  Serial.print(" | Turb: "); Serial.print(turbidityValue);
-  Serial.print(" | TDS: "); Serial.println(tdsValue);
+  Serial.print("pH: ");        Serial.print(phValue, 2);
+  Serial.print(" | T: ");      Serial.print(temperature, 1);
+  Serial.print(" | H: ");      Serial.print(humidity, 1);
+  Serial.print(" | Flow: ");   Serial.print(flowRate, 2); Serial.print(" L/min");
+  Serial.print(" | Turb: ");   Serial.print(turbidityNTU, 1); Serial.print(" NTU");
+  Serial.print(" | TDS: ");    Serial.println(tdsValue_ppm, 1); // ppm
 
   /* ===== ThingSpeak Push (DISABLED - Python Script handles this) ===== */
   /* 
@@ -138,18 +153,18 @@ void loop() {
     ThingSpeak.setField(2, temperature);
     ThingSpeak.setField(3, humidity);
     ThingSpeak.setField(4, flowRate);
-    ThingSpeak.setField(5, turbidityValue);
-    ThingSpeak.setField(6, tdsValue);
+    ThingSpeak.setField(5, turbidityNTU);
+    ThingSpeak.setField(6, tdsValue_ppm);
     
     float risk = 0;
     if (phValue < 6.5 || phValue > 8.5) risk += 20;
     if (temperature > 30) risk += 20;
-    if (turbidityValue > 5) risk += 20;
+    if (turbidityNTU > 5) risk += 20;
     if (flowRate < 10) risk += 20;
-    if (tdsValue > 1000) risk += 20;
+    if (tdsValue_ppm > 500) risk += 20;
     
     ThingSpeak.setField(7, risk);
-    ThingSpeak.setField(8, "Active");
+    ThingSpeak.setField(8, 1); // 1 = Active/Healthy
 
     int x = ThingSpeak.writeFields(channelID, writeAPIKey);
     if(x == 200){

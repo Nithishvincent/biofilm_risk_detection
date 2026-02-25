@@ -12,11 +12,11 @@ OUTPUT_FILE = "dataset.csv"
 # DATA GENERATION LOGIC
 # ===============================
 def generate_row():
-    # Decide scenario type: 
-    # 0: High Risk (Ideal Conditions) - 40%
-    # 1: Low Risk (Harsh Conditions) - 40%
-    # 2: Medium Risk (Mixed) - 15%
-    # 3: Edge Case (Sensor Fault/Noise) - 5%
+    # Scenario distribution:
+    # 0: High Biofilm Risk — optimal CONDITIONS for biofilm (neutral pH, warm, stagnant) — 40%
+    # 1: Low Biofilm Risk  — harsh/inhibiting conditions (extreme pH, high flow, cold)    — 40%
+    # 2: Medium Biofilm Risk — mixed/transitional conditions                              — 15%
+    # 3: Edge Cases — simulated sensor faults / noise / out-of-range values               — 5%
     scenario = random.choices([0, 1, 2, 3], weights=[40, 40, 15, 5])[0]
 
     # --- SCENARIO 0: HIGH RISK ---

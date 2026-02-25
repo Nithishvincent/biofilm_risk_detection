@@ -516,23 +516,22 @@ export default function App() {
     if (sensorEnabled.ph && ph !== '--' && (Number(ph) < 6.5 || Number(ph) > 8.5)) contributingFactors.push('Unstable pH')
   }
 
-  // Trend Analysis
+  // Trend Analysis — prefer ML field7 from feeds; fall back to heuristic
   const getTrend = () => {
     if (feeds.length < 2) return null
-    const curr = predictBiofilmRisk(
-      Number(feeds[feeds.length - 1].field2) + offsets.temp,
-      Number(feeds[feeds.length - 1].field1) + offsets.ph,
-      Number(feeds[feeds.length - 1].field5),
-      Number(feeds[feeds.length - 1].field4),
-      Number(feeds[feeds.length - 1].field6) + offsets.tds
-    )
-    const prev = predictBiofilmRisk(
-      Number(feeds[feeds.length - 2].field2) + offsets.temp,
-      Number(feeds[feeds.length - 2].field1) + offsets.ph,
-      Number(feeds[feeds.length - 2].field5),
-      Number(feeds[feeds.length - 2].field4),
-      Number(feeds[feeds.length - 2].field6) + offsets.tds
-    )
+    const getScore = (feed) => {
+      if (feed.field7 && !isNaN(Number(feed.field7))) return Number(feed.field7)
+      const t = Number(feed.field2) + offsets.temp
+      const p = Number(feed.field1) + offsets.ph
+      const tb = Number(feed.field5)
+      const f = Number(feed.field4)
+      const td = Number(feed.field6) + offsets.tds
+      if ([t, p, tb, f, td].some(isNaN)) return null
+      return predictBiofilmRisk(t, p, tb, f, td)
+    }
+    const curr = getScore(feeds[feeds.length - 1])
+    const prev = getScore(feeds[feeds.length - 2])
+    if (curr === null || prev === null) return null
     const diff = curr - prev
     if (Math.abs(diff) < 2) return { dir: 'stable', diff: 0 }
     return { dir: diff > 0 ? 'up' : 'down', diff: Math.abs(diff) }
