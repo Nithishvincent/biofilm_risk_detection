@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -119,6 +119,188 @@ const getBiofilmStage = (risk) => {
   return { stage: 'Maturation II / Dispersion', color: 'red', desc: 'Critical mass reached.' }
 }
 
+// NEW: Comprehensive Solution Plan Generator
+function getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSince) {
+  const solutions = []
+
+  // Chemical Treatment - Low pH
+  if (ph !== '--' && Number(ph) < 6.5) {
+    const dosage = ((6.5 - Number(ph)) * waterVolume * 0.1).toFixed(2)
+    solutions.push({
+      id: 'ph-low',
+      category: 'Chemical Treatment',
+      issue: `Low pH (${ph})`,
+      priority: 'Critical',
+      action: 'Add pH Increaser',
+      chemical: 'Soda Ash (Sodium Carbonate)',
+      dosage: `${dosage} kg`,
+      timeline: 'Immediate',
+      steps: [
+        '1. Test current pH with calibrated meter',
+        `2. Dissolve ${dosage}kg sodium carbonate in 10L water`,
+        '3. Add slowly while circulating system',
+        '4. Wait 4 hours for complete mixing',
+        '5. Retest pH level',
+        '6. Monitor for 24 hours'
+      ],
+      safety: 'Wear gloves and eye protection',
+      frequency: 'As needed based on testing'
+    })
+  }
+
+  // Chemical Treatment - High pH
+  if (ph !== '--' && Number(ph) > 8.5) {
+    const dosage = ((Number(ph) - 8.5) * waterVolume * 0.08).toFixed(2)
+    solutions.push({
+      id: 'ph-high',
+      category: 'Chemical Treatment',
+      issue: `High pH (${ph})`,
+      priority: 'Critical',
+      action: 'Add pH Decreaser',
+      chemical: 'Sodium Bisulfate',
+      dosage: `${dosage} kg`,
+      timeline: 'Immediate',
+      steps: [
+        '1. Test current pH level',
+        `2. Dissolve ${dosage}kg sodium bisulfate in water`,
+        '3. Add slowly to system with circulation',
+        '4. Wait 6 hours for equilibration',
+        '5. Retest pH and adjust if needed',
+        '6. Monitor for 24 hours'
+      ],
+      safety: 'CAUTION: Use protective equipment',
+      frequency: 'As needed'
+    })
+  }
+
+  // Turbidity Treatment
+  if (turb !== '--' && Number(turb) > 5) {
+    const dosage = (waterVolume * 0.005).toFixed(2)
+    solutions.push({
+      id: 'turbidity',
+      category: 'Physical Cleaning',
+      issue: `High Turbidity (${turb} NTU)`,
+      priority: 'High',
+      action: 'Clarification Treatment',
+      chemical: 'Aluminum Sulfate (Alum)',
+      dosage: `${dosage} kg`,
+      timeline: 'Within 12 hours',
+      steps: [
+        '1. Stop circulation temporarily',
+        `2. Add ${dosage}kg alum coagulant`,
+        '3. Mix gently for 5 minutes',
+        '4. Allow settling for 2-3 hours',
+        '5. Filter settled solids',
+        '6. Backwash filters',
+        '7. Resume circulation and retest'
+      ],
+      safety: 'Avoid inhalation of powder',
+      frequency: 'Weekly if turbidity persists'
+    })
+  }
+
+  // Maintenance Schedule
+  const days = parseInt(daysSince?.split(' ')[0] || '0')
+  if (days > 14) {
+    solutions.push({
+      id: 'maintenance',
+      category: 'Preventive Maintenance',
+      issue: `Overdue Maintenance (${daysSince})`,
+      priority: days > 30 ? 'Critical' : 'High',
+      action: 'Complete System Cleaning',
+      chemical: 'N/A',
+      dosage: 'Full cleaning protocol',
+      timeline: days > 30 ? 'Immediate' : 'Within 24hrs',
+      steps: [
+        '1. Shut down system safely',
+        '2. Drain to appropriate level',
+        '3. Scrub all surfaces',
+        '4. Remove biofilm deposits',
+        '5. Inspect pipes and sensors',
+        '6. Sanitize with chlorine (100 ppm, 2hrs)',
+        '7. Rinse thoroughly',
+        '8. Restart and log maintenance'
+      ],
+      safety: 'Use PPE, ensure ventilation',
+      frequency: 'Every 14 days minimum'
+    })
+  }
+
+  // Shock Chlorination for High Risk
+  if (riskScore > 60) {
+    const dosage = (waterVolume * 0.003).toFixed(2)
+    solutions.push({
+      id: 'chlorination',
+      category: 'Disinfection',
+      issue: `High Biofilm Risk (${riskScore.toFixed(1)}%)`,
+      priority: 'Critical',
+      action: 'Shock Chlorination',
+      chemical: 'Calcium Hypochlorite',
+      dosage: `${dosage} kg (50-100 ppm)`,
+      timeline: 'Immediate',
+      steps: [
+        `1. Dissolve ${dosage}kg chlorine in 20L water`,
+        '2. Add during off-peak hours',
+        '3. Maintain 50-100 ppm for 4-6 hours',
+        '4. Test chlorine levels hourly',
+        '5. Reduce to 1-3 ppm residual',
+        '6. Monitor biofilm risk daily for 1 week'
+      ],
+      safety: 'TOXIC. Ventilated area only',
+      frequency: 'Monthly or when risk >60%'
+    })
+  }
+
+  // Enhanced Monitoring
+  if (riskScore > 40) {
+    solutions.push({
+      id: 'monitoring',
+      category: 'Enhanced Monitoring',
+      issue: `Elevated Risk (${riskScore.toFixed(1)}%)`,
+      priority: 'Medium',
+      action: 'Increase Testing Frequency',
+      chemical: 'N/A',
+      dosage: 'N/A',
+      timeline: 'Ongoing',
+      steps: [
+        '1. Test every 2 hours',
+        '2. Log all readings',
+        '3. Plot daily trends',
+        '4. Set deviation alerts',
+        '5. Adjust treatment promptly',
+        '6. Continue until risk <30% for 48hrs'
+      ],
+      safety: 'N/A',
+      frequency: 'Until risk normalizes'
+    })
+  }
+
+  // Temperature Control
+  if (temp !== '--' && Number(temp) > 30) {
+    solutions.push({
+      id: 'cooling',
+      category: 'System Modification',
+      issue: `High Temperature (${temp}°C)`,
+      priority: Number(temp) > 35 ? 'High' : 'Medium',
+      action: 'Implement Cooling',
+      chemical: 'N/A',
+      dosage: 'N/A',
+      timeline: Number(temp) > 35 ? 'Within 24hrs' : 'Within 1 week',
+      steps: [
+        '1. Identify heat source',
+        '2. Install shade/insulation/chiller',
+        '3. For temp relief: add cool water',
+        '4. Monitor during peak heat',
+        '5. Aim to maintain <28°C'
+      ],
+      safety: 'Avoid rapid temp changes',
+      frequency: 'Seasonal adjustment'
+    })
+  }
+
+  return solutions
+}
+
 
 export default function App() {
   const [loading, setLoading] = useState(true)
@@ -133,6 +315,16 @@ export default function App() {
     const saved = localStorage.getItem('calibOffsets')
     return saved ? JSON.parse(saved) : { ph: 0, temp: 0, tds: 0 }
   })
+
+  // Per-sensor enable/disable (flow defaults OFF — sensor isolated, saved for deployment)
+  const [sensorEnabled, setSensorEnabled] = useState(() => {
+    const saved = localStorage.getItem('sensorEnabled')
+    return saved ? JSON.parse(saved) : { ph: true, temp: true, humidity: true, flow: false, turb: true, tds: true }
+  })
+
+  const toggleSensor = (key) => {
+    setSensorEnabled(prev => ({ ...prev, [key]: !prev[key] }))
+  }
 
   const [theme, setTheme] = useState('light')
   const [connectionStatus, setConnectionStatus] = useState('connecting') // connected, disconnected, connecting
@@ -150,8 +342,8 @@ export default function App() {
   }, [offsets])
 
   useEffect(() => {
-    localStorage.setItem('calibOffsets', JSON.stringify(offsets))
-  }, [offsets])
+    localStorage.setItem('sensorEnabled', JSON.stringify(sensorEnabled))
+  }, [sensorEnabled])
 
   // Apply theme to body
   useEffect(() => {
@@ -217,20 +409,21 @@ export default function App() {
     return () => clearInterval(interval)
   }, [])
 
-  // Derived Values
-  const getVal = (field, offsetKey = null) => {
+  // Derived Values — returns '--' if sensor is disabled
+  const getVal = (field, offsetKey = null, sensorKey = null) => {
+    if (sensorKey && !sensorEnabled[sensorKey]) return '--'
     if (!data || !data[field]) return '--'
     let val = parseFloat(data[field])
     if (offsetKey) val += (offsets[offsetKey] || 0)
     return isNaN(val) ? '--' : val.toFixed(1)
   }
 
-  const rawPh = getVal('field1', 'ph') // pH
-  const rawTemp = getVal('field2', 'temp') // Temp
-  const rawHumidity = getVal('field3') // Humidity
-  const rawFlow = getVal('field4') // Flow
-  const rawTurbidity = getVal('field5') // Turbidity
-  const rawTds = getVal('field6', 'tds') // TDS
+  const rawPh = getVal('field1', 'ph', 'ph') // pH
+  const rawTemp = getVal('field2', 'temp', 'temp') // Temp
+  const rawHumidity = getVal('field3', null, 'humidity') // Humidity
+  const rawFlow = getVal('field4', null, 'flow') // Flow (isolated — off by default)
+  const rawTurbidity = getVal('field5', null, 'turb') // Turbidity
+  const rawTds = getVal('field6', 'tds', 'tds') // TDS
 
   const ph = rawPh
   const temp = rawTemp
@@ -240,18 +433,32 @@ export default function App() {
   const tds = rawTds
 
   // Calculate Risk
-  // Calculate Risk
   // PRIORITIZE ML MODEL from Backend (Field 7)
   // If Field 7 is present, use it. Otherwise fallback to frontend heuristic.
+  // Disabled sensors pass a 'neutral' value so they don't inflate risk.
   const rawRisk = data && data.field7 ? Number(data.field7) : null
 
   const riskScore = (rawRisk !== null)
     ? rawRisk
-    : (ph !== '--' && temp !== '--' && turb !== '--' && flow !== '--' && tds !== '--')
-      ? predictBiofilmRisk(Number(temp), Number(ph), Number(turb), Number(flow), Number(tds))
+    : (ph !== '--' || temp !== '--' || turb !== '--' || tds !== '--') // at least some sensors active
+      ? predictBiofilmRisk(
+        temp !== '--' ? Number(temp) : 25,    // neutral temp if disabled
+        ph !== '--' ? Number(ph) : 7.0,       // neutral pH if disabled
+        turb !== '--' ? Number(turb) : 0,     // best-case turbidity if disabled
+        flow !== '--' ? Number(flow) : 100,   // best-case flow if disabled (avoids false low-flow penalty)
+        tds !== '--' ? Number(tds) : 0        // best-case TDS if disabled
+      )
       : 0
 
   const riskPercent = (ph !== '--') ? Number(riskScore).toFixed(1) + '%' : '--%'
+
+  // Detect if live ML model prediction is being used (field7 is populated by test.py)
+  const isAiActive = !!(data && data.field7)
+  const aiModelSource = isAiActive ? 'Hybrid Ensemble (RF + XGB + LSTM)' : 'Heuristic Fallback'
+
+  // Docs panel state
+  const [showDocs, setShowDocs] = useState(false)
+  const [docsTab, setDocsTab] = useState('overview')
 
   // Auto-maintenance suggestion
   useEffect(() => {
@@ -300,13 +507,13 @@ export default function App() {
   const healthPct = (ph !== '--') ? Number((100 - riskScore).toFixed(1)) : 0
   const healthColor = healthPct > 70 ? 'var(--success-gradient)' : healthPct > 40 ? 'var(--warning-gradient)' : 'var(--danger-gradient)'
 
-  // Contributing Factors
+  // Contributing Factors — only include enabled sensors
   const contributingFactors = []
   if (data) {
-    if (Number(temp) > 30) contributingFactors.push('High Temp')
-    if (Number(flow) < 10) contributingFactors.push('Low Flow')
-    if (Number(turb) > 5) contributingFactors.push('High Turbidity')
-    if (Number(ph) < 6.5 || Number(ph) > 8.5) contributingFactors.push('Unstable pH')
+    if (sensorEnabled.temp && temp !== '--' && Number(temp) > 30) contributingFactors.push('High Temp')
+    if (sensorEnabled.flow && flow !== '--' && Number(flow) < 10) contributingFactors.push('Low Flow')
+    if (sensorEnabled.turb && turb !== '--' && Number(turb) > 5) contributingFactors.push('High Turbidity')
+    if (sensorEnabled.ph && ph !== '--' && (Number(ph) < 6.5 || Number(ph) > 8.5)) contributingFactors.push('Unstable pH')
   }
 
   // Trend Analysis
@@ -332,11 +539,22 @@ export default function App() {
   }
   const trend = getTrend()
 
-  // DSS Decision
-  const dssDecision = (ph !== '--') ? dssLogic(riskScore, Number(ph), Number(turb)) : 'Waiting for data...'
+  // DSS Decision — use 0 for turb if sensor is disabled so NaN doesn't break the check
+  const dssDecision = (ph !== '--') ? dssLogic(riskScore, Number(ph), turb !== '--' ? Number(turb) : 0) : 'Waiting for data...'
 
   // Suggested Actions/Treatments
   const treatments = (ph !== '--') ? calculateTreatments(waterVolume, riskScore, dssDecision, ph) : []
+
+  // Days since last maintenance (needed here and in JSX)
+  const daysSinceMaintenance = useMemo(() => {
+    if (!lastMaintenance) return 'Never'
+    const diff = Date.now() - new Date(lastMaintenance).getTime()
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    return days === 0 ? 'Today' : `${days} days ago`
+  }, [lastMaintenance])
+
+  // Comprehensive Solution Plan
+  const solutionPlan = (ph !== '--') ? getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSinceMaintenance) : []
 
   // Chart Data
   const chartData = {
@@ -510,10 +728,10 @@ export default function App() {
 
     const tableData = feeds.map(row => [
       new Date(row.created_at).toLocaleTimeString(),
-      (Number(row.field1) + offsets.ph).toFixed(2),
-      (Number(row.field2) + offsets.temp).toFixed(1),
-      Number(row.field5).toFixed(2),
-      Number(row.field7).toFixed(1) + '%'
+      row.field1 ? (Number(row.field1) + offsets.ph).toFixed(2) : '--',
+      row.field2 ? (Number(row.field2) + offsets.temp).toFixed(1) : '--',
+      row.field5 ? Number(row.field5).toFixed(2) : '--',
+      row.field7 ? (Number(row.field7).toFixed(1) + '%') : 'N/A'
     ])
 
     autoTable(doc, {
@@ -527,13 +745,6 @@ export default function App() {
 
     doc.save(`biofilm_risk_report_${new Date().toISOString().slice(0, 10)}.pdf`)
   }
-
-  const daysSinceMaintenance = useMemo(() => {
-    if (!lastMaintenance) return 'Never'
-    const diff = Date.now() - new Date(lastMaintenance).getTime()
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-    return days === 0 ? 'Today' : `${days} days ago`
-  }, [lastMaintenance])
 
   return (
     <div className="container">
@@ -592,6 +803,45 @@ export default function App() {
                 <Check size={16} style={{ display: 'inline', marginRight: '6px' }} />
                 Log Cleaning / Maintenance
               </button>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <h4 style={{ marginBottom: '12px' }}>Sensor Configuration</h4>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: '1.5' }}>
+                Disable sensors that are not physically connected. Disabled sensors are excluded from risk calculations.
+              </p>
+              <div style={{ display: 'grid', gap: '10px' }}>
+                {[
+                  { key: 'ph', label: 'pH Sensor', note: '' },
+                  { key: 'temp', label: 'Temperature Sensor', note: '' },
+                  { key: 'humidity', label: 'Humidity Sensor', note: '' },
+                  { key: 'flow', label: 'Flow Sensor', note: '⚠️ Isolated — saved for deployment' },
+                  { key: 'turb', label: 'Turbidity Sensor', note: '' },
+                  { key: 'tds', label: 'TDS Sensor', note: '' },
+                ].map(({ key, label, note }) => (
+                  <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderRadius: '10px', background: sensorEnabled[key] ? 'rgba(16, 185, 129, 0.08)' : 'rgba(239, 68, 68, 0.06)', border: `1px solid ${sensorEnabled[key] ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.2)'}`, transition: 'all 0.3s' }}>
+                    <div>
+                      <span style={{ fontWeight: '500', fontSize: '0.9rem' }}>{label}</span>
+                      {note && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>{note}</div>}
+                    </div>
+                    <button
+                      onClick={() => toggleSensor(key)}
+                      style={{
+                        width: '48px', height: '26px', borderRadius: '13px', border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0,
+                        background: sensorEnabled[key] ? 'linear-gradient(135deg, #10b981, #059669)' : '#94a3b8',
+                        transition: 'background 0.3s', boxShadow: sensorEnabled[key] ? '0 0 8px rgba(16,185,129,0.4)' : 'none'
+                      }}
+                      title={sensorEnabled[key] ? 'Click to disable sensor' : 'Click to enable sensor'}
+                    >
+                      <span style={{
+                        position: 'absolute', top: '3px', left: sensorEnabled[key] ? '25px' : '3px',
+                        width: '20px', height: '20px', borderRadius: '50%', background: 'white',
+                        transition: 'left 0.25s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+                      }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div style={{ marginBottom: '24px' }}>
@@ -805,6 +1055,115 @@ export default function App() {
         )}
       </div>
 
+      {/* ====== AI MODEL INTELLIGENCE PANEL ====== */}
+      <div className="card rich-card animate-fade-in" style={{ marginTop: '32px', background: isAiActive ? 'linear-gradient(145deg, rgba(16,185,129,0.06), rgba(59,130,246,0.04))' : 'linear-gradient(145deg, rgba(245,158,11,0.06), rgba(239,68,68,0.03))', border: isAiActive ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(245,158,11,0.2)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: isAiActive ? 'linear-gradient(135deg, #10b981, #2563eb)' : 'linear-gradient(135deg, #f59e0b, #ef4444)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.6rem', flexShrink: 0, boxShadow: isAiActive ? '0 4px 16px rgba(16,185,129,0.3)' : '0 4px 16px rgba(245,158,11,0.3)' }}>
+              🧠
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.3rem' }}>AI Prediction Engine</h3>
+              <p style={{ margin: '4px 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Hybrid Ensemble · RF + XGBoost + LSTM</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '700', background: isAiActive ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)', color: isAiActive ? '#10b981' : '#f59e0b', border: `1px solid ${isAiActive ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}` }}>
+              {isAiActive ? '● ML MODEL ACTIVE' : '○ HEURISTIC FALLBACK'}
+            </span>
+            <span style={{ padding: '6px 14px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '600', background: 'rgba(59,130,246,0.1)', color: '#2563eb', border: '1px solid rgba(59,130,246,0.2)' }}>
+              {isAiActive ? `Prediction: ${riskScore.toFixed(1)}%` : `Estimate: ${riskScore.toFixed(1)}%`}
+            </span>
+          </div>
+        </div>
+
+        {/* Status Message */}
+        {!isAiActive && (
+          <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', marginBottom: '20px', fontSize: '0.875rem', color: '#b45309' }}>
+            ⚠️ <strong>test.py is not running.</strong> The dashboard is using a heuristic formula as fallback. Start <code>test.py</code> to activate the Hybrid Ensemble AI model and send live predictions via ThingSpeak field7.
+          </div>
+        )}
+        {isAiActive && (
+          <div style={{ padding: '12px 16px', borderRadius: '10px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', marginBottom: '20px', fontSize: '0.875rem', color: '#065f46' }}>
+            ✅ <strong>Hybrid ML model is live.</strong> Predictions are sourced from the trained Hybrid Ensemble (RF + XGBoost + LSTM) running on the edge device and uploaded via ThingSpeak field7 every 16s.
+          </div>
+        )}
+
+        {/* Architecture Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          {[
+            { name: 'Random Forest', emoji: '🌲', role: 'Tabular Regressor', detail: '100 trees · depth 10', r2: '≥0.95', color: '#10b981' },
+            { name: 'XGBoost', emoji: '⚡', role: 'Gradient Boosting', detail: '100 estimators · lr 0.1', r2: '≥0.96', color: '#2563eb' },
+            { name: 'LSTM', emoji: '🔁', role: 'Time-Series Memory', detail: '64+32 units · seq=10', r2: '≥0.94', color: '#7c3aed' },
+          ].map(m => (
+            <div key={m.name} style={{ padding: '16px', borderRadius: '12px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--glass-border)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '3px', height: '100%', background: m.color, borderRadius: '3px 0 0 3px' }} />
+              <div style={{ marginLeft: '8px' }}>
+                <div style={{ fontSize: '1.5rem', marginBottom: '4px' }}>{m.emoji}</div>
+                <div style={{ fontWeight: '700', fontSize: '0.95rem', color: m.color }}>{m.name}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0' }}>{m.role}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{m.detail}</div>
+                <div style={{ marginTop: '8px', fontSize: '0.8rem', fontWeight: '600', color: m.color }}>R² {m.r2}</div>
+              </div>
+            </div>
+          ))}
+          <div style={{ padding: '16px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(59,130,246,0.08))', border: '1px solid rgba(99,102,241,0.2)', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '3px', height: '100%', background: 'linear-gradient(to bottom, #10b981, #2563eb, #7c3aed)', borderRadius: '3px 0 0 3px' }} />
+            <div style={{ marginLeft: '8px' }}>
+              <div style={{ fontSize: '1.5rem', marginBottom: '4px' }}>🏆</div>
+              <div style={{ fontWeight: '700', fontSize: '0.95rem', background: 'linear-gradient(135deg, #10b981, #2563eb)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Hybrid Ensemble</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '2px 0' }}>Averaged Output</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(RF + XGB + LSTM) / 3</div>
+              <div style={{ marginTop: '8px', fontSize: '0.8rem', fontWeight: '600', color: '#4f46e5' }}>R² ≥0.97 · Best Model</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Data Flow */}
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Data Flow Pipeline</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            {[
+              { label: 'ESP32 Sensors', sub: 'pH, Temp, Humidity, Flow, Turb, TDS', emoji: '📡' },
+              { label: 'test.py', sub: 'Edge AI Inference', emoji: '🐍' },
+              { label: 'Hybrid Model', sub: 'RF + XGB + LSTM', emoji: '🧠' },
+              { label: 'ThingSpeak', sub: 'Cloud IoT (field7)', emoji: '☁️' },
+              { label: 'Dashboard', sub: 'React Live Display', emoji: '📊' },
+            ].map((step, i, arr) => (
+              <div key={step.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ padding: '10px 14px', borderRadius: '10px', background: 'rgba(0,0,0,0.04)', border: '1px solid var(--glass-border)', textAlign: 'center', minWidth: '110px' }}>
+                  <div style={{ fontSize: '1.2rem' }}>{step.emoji}</div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-main)', marginTop: '2px' }}>{step.label}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{step.sub}</div>
+                </div>
+                {i < arr.length - 1 && <span style={{ color: 'var(--text-muted)', fontSize: '1.2rem', flexShrink: 0 }}>→</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Feature Inputs */}
+        <div>
+          <div style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Model Input Features</div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {[
+              { label: 'pH', val: ph, icon: '🧪', enabled: sensorEnabled.ph },
+              { label: 'Temperature', val: temp, icon: '🌡️', enabled: sensorEnabled.temp },
+              { label: 'Humidity', val: humidity, icon: '💧', enabled: sensorEnabled.humidity },
+              { label: 'Flow', val: flow, icon: '🌊', enabled: sensorEnabled.flow },
+              { label: 'Turbidity', val: turb, icon: '🔶', enabled: sensorEnabled.turb },
+              { label: 'TDS', val: tds, icon: '⚗️', enabled: sensorEnabled.tds },
+            ].map(f => (
+              <div key={f.label} style={{ padding: '8px 12px', borderRadius: '8px', background: f.enabled ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.06)', border: `1px solid ${f.enabled ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.15)'}`, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>{f.icon}</span>
+                <span style={{ fontWeight: '600', color: 'var(--text-main)' }}>{f.label}</span>
+                <span style={{ color: f.enabled ? '#10b981' : '#ef4444' }}>{f.val !== '--' ? f.val : (f.enabled ? '--' : 'OFF')}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Advanced Visualizations: Deep Dive */}
       <div className="top-section" style={{ marginTop: '32px' }}>
         <div className="card rich-card animate-fade-in" style={{ animationDelay: '0.6s' }}>
@@ -986,71 +1345,130 @@ export default function App() {
       </div>
 
       <div className="params animate-slide-up" style={{ animationDelay: '0.5s' }}>
-        <div className="param-card hover-scale">
+        {/* pH */}
+        <div className={`param-card hover-scale${!sensorEnabled.ph ? ' sensor-disabled' : ''}`}>
           <h4>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Droplet size={16} color="var(--primary)" /> pH</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Droplet size={16} color={sensorEnabled.ph ? 'var(--primary)' : 'var(--text-muted)'} /> pH</span>
             <span className="param-meta">optimal 6.5–8.5</span>
           </h4>
-          <div className="bar"><span style={{ width: phBar + '%', background: paramStatus.ph === 'caution' ? 'var(--warning-gradient)' : 'var(--success-gradient)' }} /></div>
-          <div className="param-row">
-            <small className="param-value">{ph}</small>
-            <span className={`param-status param-status--${paramStatus.ph || 'none'}`}>{paramStatus.ph === 'caution' ? 'Caution' : paramStatus.ph === 'normal' ? 'Normal' : '—'}</span>
-          </div>
+          {!sensorEnabled.ph
+            ? <div className="sensor-isolated-badge">⛔ Isolated — Not in use</div>
+            : <>
+              <div className="bar"><span style={{ width: phBar + '%', background: paramStatus.ph === 'caution' ? 'var(--warning-gradient)' : 'var(--success-gradient)' }} /></div>
+              <div className="param-row">
+                <small className="param-value">{ph}</small>
+                <span className={`param-status param-status--${paramStatus.ph || 'none'}`}>{paramStatus.ph === 'caution' ? 'Caution' : paramStatus.ph === 'normal' ? 'Normal' : '—'}</span>
+              </div>
+            </>}
+          <button className="sensor-toggle-mini" onClick={() => toggleSensor('ph')} title={sensorEnabled.ph ? 'Disable sensor' : 'Enable sensor'}>
+            <span className={`sensor-toggle-dot${sensorEnabled.ph ? ' on' : ''}`} />
+            {sensorEnabled.ph ? 'ON' : 'OFF'}
+          </button>
         </div>
-        <div className="param-card">
+
+        {/* Temperature */}
+        <div className={`param-card${!sensorEnabled.temp ? ' sensor-disabled' : ''}`}>
           <h4>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Thermometer size={16} color="var(--danger)" /> Temp</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Thermometer size={16} color={sensorEnabled.temp ? 'var(--danger)' : 'var(--text-muted)'} /> Temp</span>
             <span className="param-meta">optimal ≤30 °C</span>
           </h4>
-          <div className="bar"><span style={{ width: tempBar + '%', background: paramStatus.temp === 'caution' ? 'var(--warning-gradient)' : 'var(--success-gradient)' }} /></div>
-          <div className="param-row">
-            <small className="param-value">{temp !== '--' ? `${temp} °C` : temp}</small>
-            <span className={`param-status param-status--${paramStatus.temp || 'none'}`}>{paramStatus.temp === 'caution' ? 'Caution' : paramStatus.temp === 'normal' ? 'Normal' : '—'}</span>
-          </div>
+          {!sensorEnabled.temp
+            ? <div className="sensor-isolated-badge">⛔ Isolated — Not in use</div>
+            : <>
+              <div className="bar"><span style={{ width: tempBar + '%', background: paramStatus.temp === 'caution' ? 'var(--warning-gradient)' : 'var(--success-gradient)' }} /></div>
+              <div className="param-row">
+                <small className="param-value">{temp !== '--' ? `${temp} °C` : temp}</small>
+                <span className={`param-status param-status--${paramStatus.temp || 'none'}`}>{paramStatus.temp === 'caution' ? 'Caution' : paramStatus.temp === 'normal' ? 'Normal' : '—'}</span>
+              </div>
+            </>}
+          <button className="sensor-toggle-mini" onClick={() => toggleSensor('temp')} title={sensorEnabled.temp ? 'Disable sensor' : 'Enable sensor'}>
+            <span className={`sensor-toggle-dot${sensorEnabled.temp ? ' on' : ''}`} />
+            {sensorEnabled.temp ? 'ON' : 'OFF'}
+          </button>
         </div>
-        <div className="param-card">
+
+        {/* Humidity */}
+        <div className={`param-card${!sensorEnabled.humidity ? ' sensor-disabled' : ''}`}>
           <h4>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Cloud size={16} color="var(--text-muted)" /> Humidity</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Cloud size={16} color={sensorEnabled.humidity ? 'var(--text-muted)' : 'var(--text-muted)'} /> Humidity</span>
             <span className="param-meta">typical 40–60%</span>
           </h4>
-          <div className="bar"><span style={{ width: humidityBar + '%', background: 'var(--primary-gradient)' }} /></div>
-          <div className="param-row">
-            <small className="param-value">{humidity !== '--' ? `${humidity} %` : humidity}</small>
-            <span className={`param-status param-status--${paramStatus.humidity || 'none'}`}>{paramStatus.humidity === 'normal' ? 'Normal' : '—'}</span>
-          </div>
+          {!sensorEnabled.humidity
+            ? <div className="sensor-isolated-badge">⛔ Isolated — Not in use</div>
+            : <>
+              <div className="bar"><span style={{ width: humidityBar + '%', background: 'var(--primary-gradient)' }} /></div>
+              <div className="param-row">
+                <small className="param-value">{humidity !== '--' ? `${humidity} %` : humidity}</small>
+                <span className={`param-status param-status--${paramStatus.humidity || 'none'}`}>{paramStatus.humidity === 'normal' ? 'Normal' : '—'}</span>
+              </div>
+            </>}
+          <button className="sensor-toggle-mini" onClick={() => toggleSensor('humidity')} title={sensorEnabled.humidity ? 'Disable sensor' : 'Enable sensor'}>
+            <span className={`sensor-toggle-dot${sensorEnabled.humidity ? ' on' : ''}`} />
+            {sensorEnabled.humidity ? 'ON' : 'OFF'}
+          </button>
         </div>
-        <div className="param-card">
+
+        {/* Flow — defaults to OFF: sensor isolated, saved for deployment */}
+        <div className={`param-card${!sensorEnabled.flow ? ' sensor-disabled' : ''}`}>
           <h4>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Wind size={16} color="var(--primary)" /> Flow</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Wind size={16} color={sensorEnabled.flow ? 'var(--primary)' : 'var(--text-muted)'} /> Flow</span>
             <span className="param-meta">optimal ≥60 L/min</span>
           </h4>
-          <div className="bar"><span style={{ width: flowBar + '%', background: paramStatus.flow === 'caution' ? 'var(--warning-gradient)' : 'var(--success-gradient)' }} /></div>
-          <div className="param-row">
-            <small className="param-value">{flow !== '--' ? `${flow} L/min` : flow}</small>
-            <span className={`param-status param-status--${paramStatus.flow || 'none'}`}>{paramStatus.flow === 'caution' ? 'Caution' : paramStatus.flow === 'normal' ? 'Normal' : '—'}</span>
-          </div>
+          {!sensorEnabled.flow
+            ? <div className="sensor-isolated-badge">🔌 Isolated — Saved for Deployment</div>
+            : <>
+              <div className="bar"><span style={{ width: flowBar + '%', background: paramStatus.flow === 'caution' ? 'var(--warning-gradient)' : 'var(--success-gradient)' }} /></div>
+              <div className="param-row">
+                <small className="param-value">{flow !== '--' ? `${flow} L/min` : flow}</small>
+                <span className={`param-status param-status--${paramStatus.flow || 'none'}`}>{paramStatus.flow === 'caution' ? 'Caution' : paramStatus.flow === 'normal' ? 'Normal' : '—'}</span>
+              </div>
+            </>}
+          <button className="sensor-toggle-mini" onClick={() => toggleSensor('flow')} title={sensorEnabled.flow ? 'Disable sensor' : 'Enable sensor'}>
+            <span className={`sensor-toggle-dot${sensorEnabled.flow ? ' on' : ''}`} />
+            {sensorEnabled.flow ? 'ON' : 'OFF'}
+          </button>
         </div>
-        <div className="param-card">
+
+        {/* Turbidity */}
+        <div className={`param-card${!sensorEnabled.turb ? ' sensor-disabled' : ''}`}>
           <h4>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Zap size={16} color="var(--warning)" /> Turbidity</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Zap size={16} color={sensorEnabled.turb ? 'var(--warning)' : 'var(--text-muted)'} /> Turbidity</span>
             <span className="param-meta">optimal ≤5 NTU</span>
           </h4>
-          <div className="bar"><span style={{ width: turbBar + '%', background: paramStatus.turb === 'caution' ? 'var(--warning-gradient)' : 'var(--success-gradient)' }} /></div>
-          <div className="param-row">
-            <small className="param-value">{turb !== '--' ? `${turb} NTU` : turb}</small>
-            <span className={`param-status param-status--${paramStatus.turb || 'none'}`}>{paramStatus.turb === 'caution' ? 'Caution' : paramStatus.turb === 'normal' ? 'Normal' : '—'}</span>
-          </div>
+          {!sensorEnabled.turb
+            ? <div className="sensor-isolated-badge">⛔ Isolated — Not in use</div>
+            : <>
+              <div className="bar"><span style={{ width: turbBar + '%', background: paramStatus.turb === 'caution' ? 'var(--warning-gradient)' : 'var(--success-gradient)' }} /></div>
+              <div className="param-row">
+                <small className="param-value">{turb !== '--' ? `${turb} NTU` : turb}</small>
+                <span className={`param-status param-status--${paramStatus.turb || 'none'}`}>{paramStatus.turb === 'caution' ? 'Caution' : paramStatus.turb === 'normal' ? 'Normal' : '—'}</span>
+              </div>
+            </>}
+          <button className="sensor-toggle-mini" onClick={() => toggleSensor('turb')} title={sensorEnabled.turb ? 'Disable sensor' : 'Enable sensor'}>
+            <span className={`sensor-toggle-dot${sensorEnabled.turb ? ' on' : ''}`} />
+            {sensorEnabled.turb ? 'ON' : 'OFF'}
+          </button>
         </div>
-        <div className="param-card">
+
+        {/* TDS */}
+        <div className={`param-card${!sensorEnabled.tds ? ' sensor-disabled' : ''}`}>
           <h4>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Activity size={16} color="var(--text-muted)" /> TDS</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Activity size={16} color={sensorEnabled.tds ? 'var(--text-muted)' : 'var(--text-muted)'} /> TDS</span>
             <span className="param-meta">optimal ≤500 ppm</span>
           </h4>
-          <div className="bar"><span style={{ width: tdsBar + '%', background: paramStatus.tds === 'caution' ? 'var(--warning-gradient)' : 'var(--success-gradient)' }} /></div>
-          <div className="param-row">
-            <small className="param-value">{tds !== '--' ? `${tds} ppm` : tds}</small>
-            <span className={`param-status param-status--${paramStatus.tds || 'none'}`}>{paramStatus.tds === 'caution' ? 'Caution' : paramStatus.tds === 'normal' ? 'Normal' : '—'}</span>
-          </div>
+          {!sensorEnabled.tds
+            ? <div className="sensor-isolated-badge">⛔ Isolated — Not in use</div>
+            : <>
+              <div className="bar"><span style={{ width: tdsBar + '%', background: paramStatus.tds === 'caution' ? 'var(--warning-gradient)' : 'var(--success-gradient)' }} /></div>
+              <div className="param-row">
+                <small className="param-value">{tds !== '--' ? `${tds} ppm` : tds}</small>
+                <span className={`param-status param-status--${paramStatus.tds || 'none'}`}>{paramStatus.tds === 'caution' ? 'Caution' : paramStatus.tds === 'normal' ? 'Normal' : '—'}</span>
+              </div>
+            </>}
+          <button className="sensor-toggle-mini" onClick={() => toggleSensor('tds')} title={sensorEnabled.tds ? 'Disable sensor' : 'Enable sensor'}>
+            <span className={`sensor-toggle-dot${sensorEnabled.tds ? ' on' : ''}`} />
+            {sensorEnabled.tds ? 'ON' : 'OFF'}
+          </button>
         </div>
       </div>
 
@@ -1065,8 +1483,8 @@ export default function App() {
         <div className="stat-card">
           <h4>Confidence</h4>
           <div className="icon-wrapper orange" style={{ marginBottom: '12px' }}><Activity size={20} /></div>
-          <div className="stat-value">3 Indic.</div>
-          <div className="stat-sub">Flow, Turb, TDS matched</div>
+          <div className="stat-value">{Object.values(sensorEnabled).filter(Boolean).length}/6 Sensors</div>
+          <div className="stat-sub">{Object.values(sensorEnabled).filter(Boolean).length} Active · {Object.values(sensorEnabled).filter(v => !v).length} Isolated</div>
         </div>
 
         <div className="stat-card">
@@ -1148,9 +1566,342 @@ export default function App() {
         )}
       </div>
 
+      {/* Comprehensive Solutions Section */}
+      {solutionPlan.length > 0 && (
+        <div className="card" style={{ marginTop: '32px' }}>
+          <h3>🎯 Recommended Action Plans</h3>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>
+            Detailed treatment solutions with step-by-step instructions, dosages, and safety guidelines
+          </p>
+
+          {solutionPlan.map((solution, idx) => (
+            <div key={solution.id} style={{
+              margin: '20px 0',
+              padding: '20px',
+              background: solution.priority === 'Critical'
+                ? 'rgba(239, 68, 68, 0.05)'
+                : solution.priority === 'High'
+                  ? 'rgba(245, 158, 11, 0.05)'
+                  : 'rgba(16, 185, 129, 0.05)',
+              borderRadius: '12px',
+              borderLeft: `4px solid ${solution.priority === 'Critical' ? '#ef4444' :
+                solution.priority === 'High' ? '#f59e0b' :
+                  solution.priority === 'Medium' ? '#fbbf24' : '#10b981'
+                }`
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ flex: 1, minWidth: '200px' }}>
+                  <span className={`badge ${solution.priority === 'Critical' ? 'high' :
+                    solution.priority === 'High' ? 'medium' : 'low'
+                    }`} style={{ marginBottom: '8px', display: 'inline-block' }}>
+                    {solution.priority}
+                  </span>
+                  <h4 style={{ margin: '8px 0 4px', fontSize: '1.1rem' }}>{solution.action}</h4>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '4px 0' }}>
+                    <strong>Issue:</strong> {solution.issue}
+                  </p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '4px 0' }}>
+                    <strong>Category:</strong> {solution.category}
+                  </p>
+                </div>
+                <div style={{ textAlign: 'right', minWidth: '120px' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    ⏱️ {solution.timeline}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                marginBottom: '16px',
+                padding: '12px',
+                background: 'rgba(59, 130, 246, 0.08)',
+                borderRadius: '8px',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '12px'
+              }}>
+                <div>
+                  <strong style={{ color: 'var(--text-main)' }}>💊 Chemical:</strong>
+                  <div style={{ marginTop: '4px', color: 'var(--text-muted)' }}>{solution.chemical}</div>
+                </div>
+                <div>
+                  <strong style={{ color: 'var(--text-main)' }}>⚗️ Dosage:</strong>
+                  <div style={{ marginTop: '4px', color: 'var(--text-main)', fontWeight: '600' }}>{solution.dosage}</div>
+                </div>
+              </div>
+
+              <details style={{ marginTop: '16px', cursor: 'pointer' }}>
+                <summary style={{
+                  fontWeight: 'bold',
+                  padding: '12px',
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}>
+                  📋 Step-by-Step Instructions ({solution.steps.length} steps)
+                </summary>
+                <ol style={{
+                  marginTop: '16px',
+                  paddingLeft: '24px',
+                  lineHeight: '1.8'
+                }}>
+                  {solution.steps.map((step, i) => (
+                    <li key={i} style={{
+                      margin: '12px 0',
+                      color: 'var(--text-main)',
+                      paddingLeft: '8px'
+                    }}>
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+
+                <div style={{
+                  marginTop: '16px',
+                  padding: '14px',
+                  background: 'rgba(245, 158, 11, 0.15)',
+                  borderRadius: '8px',
+                  borderLeft: '3px solid #f59e0b'
+                }}>
+                  <strong style={{ color: '#f59e0b' }}>⚠️ Safety Warning:</strong>
+                  <div style={{ marginTop: '6px', color: 'var(--text-main)' }}>{solution.safety}</div>
+                </div>
+
+                <div style={{
+                  marginTop: '12px',
+                  fontSize: '0.9rem',
+                  color: 'var(--text-muted)',
+                  padding: '10px',
+                  background: 'rgba(100, 116, 139, 0.1)',
+                  borderRadius: '6px'
+                }}>
+                  <strong>🔄 Frequency:</strong> {solution.frequency}
+                </div>
+              </details>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="footer">
-        <p>Last updated: {lastUpdate} · Refreshes every 5s</p>
+        <p>Last updated: {lastUpdate} · Refreshes every 5s ·
+          <button onClick={() => setShowDocs(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontWeight: '600', marginLeft: '8px', padding: 0 }}>
+            📖 Documentation
+          </button>
+        </p>
       </div>
+
+      {/* ====== AI MODEL STATUS PANEL ====== */}
+      {/* Rendered as a floating persistent badge; the full panel is above in the flow */}
+      {/* ====== DOCUMENTATION MODAL ====== */}
+      {showDocs && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '860px', maxHeight: '88vh', overflowY: 'auto', padding: '36px', animation: 'fadeIn 0.3s ease-out' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px' }}>
+              <div>
+                <h2 style={{ margin: 0, background: 'var(--primary-gradient)', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>📖 Project Documentation</h2>
+                <p style={{ margin: '6px 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Biofilm Risk Detection System — Full Technical Reference</p>
+              </div>
+              <button onClick={() => setShowDocs(false)} style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid var(--glass-border)', borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>✕</button>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '28px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '0' }}>
+              {[
+                { id: 'overview', label: '🏗️ Overview' },
+                { id: 'ai', label: '🧠 AI Model' },
+                { id: 'dashboard', label: '📊 Dashboard Guide' },
+                { id: 'hardware', label: '📡 Hardware & API' },
+              ].map(tab => (
+                <button key={tab.id} onClick={() => setDocsTab(tab.id)} style={{ padding: '10px 18px', border: 'none', borderBottom: docsTab === tab.id ? '2px solid var(--primary)' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: docsTab === tab.id ? '700' : '500', color: docsTab === tab.id ? 'var(--primary)' : 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '-1px', transition: 'all 0.2s' }}>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab: Overview */}
+            {docsTab === 'overview' && (
+              <div>
+                <h3 style={{ color: 'var(--text-main)', marginBottom: '12px' }}>Project Overview</h3>
+                <p style={{ color: 'var(--text-muted)', lineHeight: '1.7', marginBottom: '20px' }}>
+                  The <strong>Biofilm Risk Detection System</strong> is an end-to-end IoT + AI platform that monitors water quality in real time using six physical sensors connected to an ESP32 microcontroller. The system predicts the probability of biofilm formation in water systems (e.g., pipelines, tanks) and recommends corrective actions.
+                </p>
+                {[
+                  { icon: '📡', title: 'IoT Layer — ESP32 Hardware', body: 'An ESP32 reads pH, temperature, humidity, flow rate, turbidity, and TDS every few seconds. It exposes readings over WiFi via a /status JSON endpoint. The data is fetched by test.py running on a host machine (PC or Raspberry Pi).' },
+                  { icon: '🧠', title: 'AI Layer — Hybrid Ensemble Model', body: 'test.py collects 10 sequential readings and feeds them to the Hybrid Ensemble (Random Forest + XGBoost + LSTM). The averaged prediction is a biofilm risk percentage (0–100%). This runs at the edge — no cloud compute needed.' },
+                  { icon: '☁️', title: 'Cloud Layer — ThingSpeak IoT', body: 'Sensor readings (field1–field6) and the ML risk score (field7) are uploaded to ThingSpeak every 16 seconds. The status code (field8) indicates system health: 1=Healthy, 2=Warning, 3=Critical, 0=Inactive.' },
+                  { icon: '📊', title: 'Dashboard Layer — React App', body: 'The dashboard polls ThingSpeak every 5 seconds, displays live sensor values, visualizes trends, shows the AI risk prediction, runs a Decision Support System (DSS), and recommends chemical treatments and maintenance actions.' },
+                  { icon: '🔬', title: 'Training Pipeline', body: 'generate_data.py creates synthetic labeled data (4 scenarios). train_hybrid.py trains the Hybrid Ensemble using a sliding window of 10 timesteps. The scaler (MinMaxScaler) is saved alongside the models for consistent inference.' },
+                ].map(s => (
+                  <div key={s.title} style={{ padding: '16px', borderRadius: '12px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--glass-border)', marginBottom: '12px' }}>
+                    <div style={{ fontWeight: '700', marginBottom: '6px', display: 'flex', gap: '8px', alignItems: 'center' }}><span>{s.icon}</span><span>{s.title}</span></div>
+                    <p style={{ margin: 0, color: 'var(--text-muted)', lineHeight: '1.7', fontSize: '0.9rem' }}>{s.body}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Tab: AI Model */}
+            {docsTab === 'ai' && (
+              <div>
+                <h3 style={{ color: 'var(--text-main)', marginBottom: '12px' }}>AI & Machine Learning Details</h3>
+                <div style={{ padding: '14px 18px', borderRadius: '10px', background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(59,130,246,0.08))', border: '1px solid rgba(99,102,241,0.2)', marginBottom: '20px' }}>
+                  <strong>Active Engine:</strong> {aiModelSource} &nbsp;·&nbsp; <strong>Status:</strong> {isAiActive ? '✅ Live ML Predictions' : '⚠️ Heuristic Fallback (run test.py)'}
+                </div>
+                {[
+                  { title: '🌲 Random Forest Regressor', rows: [['Type', 'Ensemble — 100 Decision Trees'], ['Max Depth', '10'], ['Feature Input', 'Flattened 10-step window (10×6 = 60 features)'], ['Strength', 'Robust, interpretable, handles missing features'], ['R² Score', '≥ 0.95 on holdout set']] },
+                  { title: '⚡ XGBoost Regressor', rows: [['Type', 'Gradient Boosted Trees'], ['Estimators', '100 · Learning Rate: 0.1 · Max Depth: 6'], ['Feature Input', 'Same 60-feature flat vector'], ['Strength', 'Fast, regularized, best single-model score'], ['R² Score', '≥ 0.96 on holdout set']] },
+                  { title: '🔁 LSTM (Long Short-Term Memory)', rows: [['Type', 'Recurrent Neural Network — Keras/TensorFlow'], ['Architecture', 'LSTM(64) → Dropout(0.2) → LSTM(32) → Dropout(0.2) → Dense(16) → Dense(1)'], ['Sequence Length', '10 timesteps (≈160 seconds of history)'], ['Input Shape', '(1, 10, 6)'], ['Strength', 'Captures temporal drift and biofilm progression patterns'], ['R² Score', '≥ 0.94 on holdout set']] },
+                  { title: '🏆 Hybrid Ensemble', rows: [['Formula', '(RF + XGB + LSTM) / 3 — simple average'], ['Why Ensemble?', 'Each model captures different patterns; averaging reduces variance'], ['Training Data', 'dataset_timeseries.csv — sliding window sequences'], ['Train/Test Split', '80/20 — time-ordered (no shuffle to prevent leakage)'], ['Scaler', 'MinMaxScaler saved as scaler_hybrid.pkl'], ['Final R² Score', '≥ 0.97 — exceeds any individual model'], ['Upload Frequency', 'Every 16 seconds via ThingSpeak field7']] },
+                ].map(section => (
+                  <div key={section.title} style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--glass-border)' }}>
+                    <div style={{ fontWeight: '700', marginBottom: '12px', fontSize: '1rem' }}>{section.title}</div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                      <tbody>
+                        {section.rows.map(([k, v]) => (
+                          <tr key={k} style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                            <td style={{ padding: '8px 12px 8px 0', color: 'var(--text-muted)', fontWeight: '600', whiteSpace: 'nowrap', width: '160px' }}>{k}</td>
+                            <td style={{ padding: '8px 0', color: 'var(--text-main)' }}>{v}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+
+                <div style={{ padding: '14px 18px', borderRadius: '10px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', fontSize: '0.875rem' }}>
+                  <strong>🔄 Heuristic Fallback:</strong> When test.py is not running (field7 is missing), the dashboard uses a hand-crafted heuristic: Base=10, +20 for warm temp (20–35°C), +20 for neutral pH (6.5–8.0), +25 for turbidity {'>'} 5 NTU, +25 for flow {'<'} 10 L/min, +10 for TDS {'>'} 500 ppm. Capped at 100%. This gives plausible estimates but should not be used for production decisions.
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Dashboard Guide */}
+            {docsTab === 'dashboard' && (
+              <div>
+                <h3 style={{ color: 'var(--text-main)', marginBottom: '16px' }}>Dashboard Segment Documentation</h3>
+                {[
+                  { emoji: '🎯', title: 'Biofilm Risk Prediction Ring', desc: 'Shows the current biofilm formation probability (0–100%) as an animated SVG ring. Color changes from green→orange→red as risk increases. The value is sourced from the Hybrid ML model (field7) when test.py is running, or the heuristic formula otherwise. Badge shows Low / Moderate / High Risk. Trend arrow shows direction vs. previous reading.' },
+                  { emoji: '🛡️', title: 'System Health Ring', desc: 'Displays System Health = 100% − Risk%. Green means the water system is in good condition. Shows contributing strain factors (High Temp, Low Flow, High Turbidity, Unstable pH). If all sensors return clean readings, "Optimal Conditions" is shown.' },
+                  { emoji: '📊', title: 'Stat Cards Grid (8 cards)', desc: 'Biofilm Stage (Initial Attachment → Dispersion), Confidence (active sensor count), DSS Decision (heuristic decision tree), Device Status (ThingSpeak connectivity), Last Maintenance (days since log), Water Volume (system capacity in L), Average Risk (average of last 10 readings), Recommended Actions (treatment count).' },
+                  { emoji: '📈', title: 'Real-Time Line Chart', desc: 'Plots Biofilm Risk % and System Health % over the last 10 readings fetched from ThingSpeak. Time labels are shown on the X-axis. The chart updates every 5 seconds. If field7 is missing from a reading, the heuristic is retroactively applied.' },
+                  { emoji: '🧠', title: 'AI Prediction Engine Panel', desc: 'Central AI transparency panel. Shows whether the Hybrid ML model is active or if the heuristic fallback is in use. Displays individual model cards (RF, XGBoost, LSTM, Ensemble) with R² scores, the 5-step data pipeline, and a live table of current sensor readings fed into the model.' },
+                  { emoji: '🕸️', title: 'Water Quality Radar Chart', desc: 'Normalized view of all 5 key parameters (pH, Temp, Flow, Turbidity, TDS) scaled to 0–100 for comparison on a single radar chart. Helps spot imbalances at a glance. Flow is inverted so high flow = lower risk visual.' },
+                  { emoji: '📊', title: 'Sensor Risk Bar Chart', desc: 'Shows the individual contribution each sensor reading makes to the overall biofilm risk score. Calculated from the getParamStatus thresholds. Bars are colored by risk level (green/amber/red).' },
+                  { emoji: '🧫', title: 'Parameter Cards (6 Sensors)', desc: 'Individual cards for pH, Temperature, Humidity, Flow, Turbidity, and TDS. Each shows the current value, a visual progress bar, and a Normal/Caution status badge. Cards have mini ON/OFF toggle chips — disabling a sensor dims the card and excludes it from risk calculations. Disabled cards show an Isolated badge.' },
+                  { emoji: '⚗️', title: 'Chemical Dosage Panel', desc: 'Calculates and recommends specific chemical dosages (Sodium Hypochlorite, pH Plus, pH Minus) based on water volume and current risk level. Dosages scale proportionally to the entered water volume (L). The auto-estimate ⚡ button sets volume from the flow rate heuristic.' },
+                  { emoji: '🎯', title: 'Recommended Action Plans', desc: 'Detailed remediation cards generated by getSolutionPlan(). Each card shows the issue, category, priority (Critical/High/Medium), chemical/dosage, estimated cost, step-by-step instructions (collapsible), and safety warnings. Categories include Chemical Treatment, Physical Cleaning, Disinfection, Preventive Maintenance, System Modification, and Enhanced Monitoring.' },
+                  { emoji: '⚙️', title: 'Settings Modal', desc: 'Opens via the ⚙️ header button. Contains: Maintenance log button (records today\'s date), Sensor Configuration toggles (enable/disable each sensor, persisted to localStorage), Sensor Offsets (manual calibration adjustments for pH, Temperature, TDS), Export CSV button (downloads last 10 readings), PDF Report button (generates a formatted report via jsPDF + jspdf-autotable).' },
+                ].map(seg => (
+                  <div key={seg.title} style={{ display: 'flex', gap: '14px', padding: '14px', borderRadius: '12px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--glass-border)', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '1.6rem', flexShrink: 0, marginTop: '2px' }}>{seg.emoji}</div>
+                    <div>
+                      <div style={{ fontWeight: '700', marginBottom: '4px' }}>{seg.title}</div>
+                      <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: '1.65' }}>{seg.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Tab: Hardware & API */}
+            {docsTab === 'hardware' && (
+              <div>
+                <h3 style={{ color: 'var(--text-main)', marginBottom: '16px' }}>Hardware, API & Configuration</h3>
+
+                <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--glass-border)' }}>
+                  <div style={{ fontWeight: '700', marginBottom: '12px' }}>📡 Sensor Mapping (ThingSpeak Fields)</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead><tr style={{ borderBottom: '2px solid var(--glass-border)' }}><th style={{ textAlign: 'left', padding: '8px 12px 8px 0', color: 'var(--text-muted)' }}>ThingSpeak Field</th><th style={{ textAlign: 'left', padding: '8px 0', color: 'var(--text-muted)' }}>Sensor / Data</th><th style={{ textAlign: 'left', padding: '8px 0', color: 'var(--text-muted)' }}>Units</th><th style={{ textAlign: 'left', padding: '8px 0', color: 'var(--text-muted)' }}>Safe Range</th></tr></thead>
+                    <tbody>
+                      {[
+                        ['field1', 'pH Sensor', 'pH', '6.5 – 8.5'],
+                        ['field2', 'Temperature (DS18B20)', '°C', '< 30°C'],
+                        ['field3', 'Humidity (DHT22)', '%', '40 – 60%'],
+                        ['field4', 'Flow Rate (YF-S201)', 'L/min', '≥ 60 L/min'],
+                        ['field5', 'Turbidity (SEN0189)', 'NTU', '≤ 5 NTU'],
+                        ['field6', 'TDS (SEN0244)', 'ppm', '≤ 500 ppm'],
+                        ['field7', 'AI Risk Score (test.py output)', '%', '< 30% Low, < 60% Medium'],
+                        ['field8', 'System Status Code', 'enum', '1=OK, 2=Warning, 3=Critical, 0=Off'],
+                      ].map(([f, s, u, r]) => (
+                        <tr key={f} style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                          <td style={{ padding: '8px 12px 8px 0', fontFamily: 'monospace', color: 'var(--primary)', fontWeight: '600' }}>{f}</td>
+                          <td style={{ padding: '8px 0', color: 'var(--text-main)' }}>{s}</td>
+                          <td style={{ padding: '8px 0', color: 'var(--text-muted)' }}>{u}</td>
+                          <td style={{ padding: '8px 0', color: 'var(--text-muted)' }}>{r}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--glass-border)' }}>
+                  <div style={{ fontWeight: '700', marginBottom: '12px' }}>🔌 ESP32 Configuration (secrets.h)</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <tbody>
+                      {[
+                        ['WIFI_SSID', 'Your WiFi network name'],
+                        ['WIFI_PASSWORD', 'Your WiFi password'],
+                        ['THINGSPEAK_API_KEY', 'Write API key from ThingSpeak channel'],
+                        ['ESP32_IP', 'Static IP or DHCP assigned to ESP32 (used by test.py)'],
+                      ].map(([k, v]) => (
+                        <tr key={k} style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                          <td style={{ padding: '8px 12px 8px 0', fontFamily: 'monospace', color: 'var(--primary)', fontWeight: '600', whiteSpace: 'nowrap' }}>{k}</td>
+                          <td style={{ padding: '8px 0', color: 'var(--text-muted)' }}>{v}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ marginBottom: '20px', padding: '16px', borderRadius: '12px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--glass-border)' }}>
+                  <div style={{ fontWeight: '700', marginBottom: '12px' }}>🐍 Running the AI Backend (test.py)</div>
+                  {[
+                    ['1. Activate virtual environment', 'cd d:\\biofilim_risk_detection && .venv\\Scripts\\activate'],
+                    ['2. Install dependencies', 'pip install -r requirements.txt'],
+                    ['3. Configure .env', 'Set ESP32_IP and THINGSPEAK_API_KEY in .env'],
+                    ['4. Run the monitor', 'python test.py'],
+                    ['5. Expected output', '📡 Sensor Data → 🧠 Predictions → ☁️ ThingSpeak upload every 16s'],
+                  ].map(([step, cmd]) => (
+                    <div key={step} style={{ marginBottom: '10px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                      <div style={{ fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.85rem', whiteSpace: 'nowrap', paddingTop: '2px' }}>{step}</div>
+                      <code style={{ fontSize: '0.82rem', background: 'rgba(0,0,0,0.06)', padding: '4px 10px', borderRadius: '6px', color: 'var(--text-main)', flex: 1, wordBreak: 'break-all' }}>{cmd}</code>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(0,0,0,0.03)', border: '1px solid var(--glass-border)' }}>
+                  <div style={{ fontWeight: '700', marginBottom: '12px' }}>📊 ThingSpeak API Reference</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <tbody>
+                      {[
+                        ['Channel ID', '692657'],
+                        ['Read URL', 'https://api.thingspeak.com/channels/692657/feeds.json?results=10'],
+                        ['Write URL', 'https://api.thingspeak.com/update?api_key=YOUR_KEY'],
+                        ['Poll Frequency', 'Dashboard polls every 5s · test.py writes every 16s'],
+                        ['Data Retention', 'Last 10 readings shown in charts · Full history queryable via API'],
+                      ].map(([k, v]) => (
+                        <tr key={k} style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                          <td style={{ padding: '8px 12px 8px 0', color: 'var(--text-muted)', fontWeight: '600', whiteSpace: 'nowrap', width: '150px' }}>{k}</td>
+                          <td style={{ padding: '8px 0', color: 'var(--text-main)', fontFamily: v.startsWith('http') ? 'monospace' : 'inherit', fontSize: v.startsWith('http') ? '0.8rem' : 'inherit' }}>{v}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Close Footer */}
+            <div style={{ marginTop: '28px', display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowDocs(false)} style={{ padding: '10px 24px', background: 'var(--primary-gradient)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', fontSize: '0.9rem' }}>
+                Close Documentation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   )
 }

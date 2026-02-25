@@ -30,9 +30,14 @@ def generate_row():
 
     # --- SCENARIO 1: LOW RISK ---
     elif scenario == 1:
-        # Extreme pH or High Flow or Very Cold/Hot
+        # Explicit defaults first, then override per sub-type
+        temp = random.uniform(20.0, 30.0)
+        humidity = random.uniform(30.0, 60.0)
+        turbidity = random.uniform(0.0, 200.0)  # Clear water
+        tds = random.uniform(50.0, 300.0)
+
         sub_type = random.choice(['acidic', 'alkaline', 'high_flow', 'cold'])
-        
+
         if sub_type == 'acidic':
             ph = random.uniform(3.0, 5.0)
             flow = random.uniform(20.0, 50.0)
@@ -41,17 +46,11 @@ def generate_row():
             flow = random.uniform(20.0, 50.0)
         elif sub_type == 'high_flow':
             ph = random.uniform(6.0, 8.0)
-            flow = random.uniform(60.0, 100.0) # Flushing effect
-        else: # cold
+            flow = random.uniform(60.0, 100.0)  # Flushing effect
+        else:  # cold
             ph = random.uniform(6.0, 8.0)
-            temp = random.uniform(5.0, 15.0)
+            temp = random.uniform(5.0, 15.0)    # Override temp only
             flow = random.uniform(10.0, 40.0)
-
-        # Fill partials if not set above
-        if 'temp' not in locals(): temp = random.uniform(20.0, 30.0)
-        if 'humidity' not in locals(): humidity = random.uniform(30.0, 60.0)
-        if 'turbidity' not in locals(): turbidity = random.uniform(0.0, 200.0) # Clear
-        if 'tds' not in locals(): tds = random.uniform(50.0, 300.0)
 
     # --- SCENARIO 2: MEDIUM RISK ---
     elif scenario == 2:

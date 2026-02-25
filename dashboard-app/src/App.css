@@ -910,3 +910,93 @@ button:active {
 .pulse-animation {
   animation: pulse-green 2s infinite;
 }
+
+/* ========== SENSOR TOGGLE STYLES ========== */
+
+/* Dimmed card when sensor is disabled */
+.param-card.sensor-disabled {
+  opacity: 0.65;
+  border: 1px dashed rgba(148, 163, 184, 0.5);
+  background: repeating-linear-gradient(-45deg,
+      transparent,
+      transparent 6px,
+      rgba(148, 163, 184, 0.04) 6px,
+      rgba(148, 163, 184, 0.04) 12px);
+}
+
+[data-theme="dark"] .param-card.sensor-disabled {
+  border: 1px dashed rgba(100, 116, 139, 0.5);
+  background: repeating-linear-gradient(-45deg,
+      transparent,
+      transparent 6px,
+      rgba(100, 116, 139, 0.06) 6px,
+      rgba(100, 116, 139, 0.06) 12px);
+}
+
+/* "Isolated / Saved for Deployment" badge shown inside the card */
+.sensor-isolated-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 14px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.12);
+  color: var(--text-muted);
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  letter-spacing: 0.3px;
+}
+
+[data-theme="dark"] .sensor-isolated-badge {
+  background: rgba(100, 116, 139, 0.15);
+  border-color: rgba(100, 116, 139, 0.4);
+}
+
+/* Small ON/OFF toggle chip at bottom of each param card */
+.sensor-toggle-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sensor-toggle-mini:hover {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.3);
+  color: var(--primary);
+  transform: none;
+  /* override global button active scale */
+}
+
+[data-theme="dark"] .sensor-toggle-mini {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+}
+
+/* The dot inside the mini toggle chip */
+.sensor-toggle-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #94a3b8;
+  display: inline-block;
+  transition: background 0.2s;
+}
+
+.sensor-toggle-dot.on {
+  background: #10b981;
+  box-shadow: 0 0 4px rgba(16, 185, 129, 0.6);
+}
