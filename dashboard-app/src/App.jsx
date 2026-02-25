@@ -418,19 +418,12 @@ export default function App() {
     return isNaN(val) ? '--' : val.toFixed(1)
   }
 
-  const rawPh = getVal('field1', 'ph', 'ph') // pH
-  const rawTemp = getVal('field2', 'temp', 'temp') // Temp
-  const rawHumidity = getVal('field3', null, 'humidity') // Humidity
-  const rawFlow = getVal('field4', null, 'flow') // Flow (isolated — off by default)
-  const rawTurbidity = getVal('field5', null, 'turb') // Turbidity
-  const rawTds = getVal('field6', 'tds', 'tds') // TDS
-
-  const ph = rawPh
-  const temp = rawTemp
-  const humidity = rawHumidity
-  const flow = rawFlow
-  const turb = rawTurbidity
-  const tds = rawTds
+  const ph = getVal('field1', 'ph', 'ph') // pH
+  const temp = getVal('field2', 'temp', 'temp') // Temp
+  const humidity = getVal('field3', null, 'humidity') // Humidity
+  const flow = getVal('field4', null, 'flow') // Flow (isolated — off by default)
+  const turb = getVal('field5', null, 'turb') // Turbidity
+  const tds = getVal('field6', 'tds', 'tds') // TDS
 
   // Calculate Risk
   // PRIORITIZE ML MODEL from Backend (Field 7)
@@ -460,13 +453,6 @@ export default function App() {
   const [showDocs, setShowDocs] = useState(false)
   const [docsTab, setDocsTab] = useState('overview')
 
-  // Auto-maintenance suggestion
-  useEffect(() => {
-    if (riskScore > 80 && !lastMaintenance) {
-      // If risk is critical and no maintenance logged, suggest it
-      // In a real app, this might be a persistent state
-    }
-  }, [riskScore, lastMaintenance])
 
   useEffect(() => {
     const riskVal = riskScore
@@ -1468,39 +1454,6 @@ export default function App() {
             <span className={`sensor-toggle-dot${sensorEnabled.tds ? ' on' : ''}`} />
             {sensorEnabled.tds ? 'ON' : 'OFF'}
           </button>
-        </div>
-      </div>
-
-      <div className="stat-grid">
-        <div className="stat-card">
-          <h4>Biofilm Stage</h4>
-          <div className="icon-wrapper blue" style={{ marginBottom: '12px' }}><Microscope size={20} /></div>
-          <div className="stat-value">{biofilmStage.stage}</div>
-          <div className="stat-sub">{biofilmStage.desc}</div>
-        </div>
-
-        <div className="stat-card">
-          <h4>Confidence</h4>
-          <div className="icon-wrapper orange" style={{ marginBottom: '12px' }}><Activity size={20} /></div>
-          <div className="stat-value">{Object.values(sensorEnabled).filter(Boolean).length}/6 Sensors</div>
-          <div className="stat-sub">{Object.values(sensorEnabled).filter(Boolean).length} Active · {Object.values(sensorEnabled).filter(v => !v).length} Isolated</div>
-        </div>
-
-        <div className="stat-card">
-          <h4>DSS Decision</h4>
-          <div className={`icon-wrapper ${dssDecision.includes('Normal') ? 'green' : 'red'}`} style={{ marginBottom: '12px' }}>
-            {dssDecision.includes('Normal') ? <Check size={20} /> : <AlertTriangle size={20} />}
-          </div>
-          <div className="stat-value" style={{ fontSize: '1rem' }}>{dssDecision}</div>
-        </div>
-
-        <div className="stat-card">
-          <h4>Maintenance</h4>
-          <div className={`icon-wrapper ${daysSinceMaintenance.includes('Today') ? 'green' : riskScore > 80 ? 'red' : 'blue'}`} style={{ marginBottom: '12px' }}>
-            <Settings size={20} />
-          </div>
-          <div className="stat-value">{riskScore > 80 && !daysSinceMaintenance.includes('Today') ? 'Required' : 'Status OK'}</div>
-          <div className="stat-sub">{lastMaintenance ? new Date(lastMaintenance).toLocaleDateString() : 'No record'}</div>
         </div>
       </div>
 
