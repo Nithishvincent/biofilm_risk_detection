@@ -3,7 +3,7 @@ import numpy as np
 import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, r2_score
-from biofilim_models import HybridBiofilmPredictor
+from biofilm_models import HybridBiofilmPredictor
 import os
 
 # ===============================

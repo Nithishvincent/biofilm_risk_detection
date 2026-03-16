@@ -1,3 +1,9 @@
+import os
+
+# Configure TensorFlow logging/CPU backend before importing tensorflow.
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
+os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
+
 import numpy as np
 import joblib
 import tensorflow as tf
@@ -5,7 +11,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from sklearn.ensemble import RandomForestRegressor
 import xgboost as xgb
-import os
+
+tf.get_logger().setLevel("ERROR")
 
 class HybridBiofilmPredictor:
     def __init__(self):

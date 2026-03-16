@@ -21,7 +21,7 @@ Thumbs.db
 dataset.csv
 
 # Arduino Secrets
-biofilim/secrets.h
+biofilm/secrets.h
 
 # Virtual Environment
 .venv/

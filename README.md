@@ -39,7 +39,7 @@ See `requirements.txt`:
 ## 🚀 Installation & Setup
 
 ### 1. Arduino Setup
-1.  Navigate to `biofilim_jit_2026/`.
+1.  Navigate to `biofilm_jit_2026/`.
 2.  Create a `secrets.h` file based on `secrets_example.h` and enter your WiFi credentials:
     ```cpp
     #define SECRETS_H
@@ -47,7 +47,7 @@ See `requirements.txt`:
     const char* password = "YOUR_WIFI_PASSWORD";
     #endif
     ```
-3.  Open `biofilim_jit_2026.ino` in Arduino IDE.
+3.  Open `biofilm_jit_2026.ino` in Arduino IDE.
 4.  Select your board and port, then upload the code.
 5.  Open Serial Monitor to find the **ESP32 IP Address**.
 
@@ -58,9 +58,12 @@ See `requirements.txt`:
     ```
 2.  Create a `.env` file in the root directory based on `.env.example`:
     ```ini
-    ESP32_IP=http://<YOUR_ESP32_IP>/status
+    ESP32_IP=<YOUR_ESP32_IP>
+    ESP32_PORT=80
+    ESP32_PATH=/status
     THINGSPEAK_API_KEY=YOUR_THINGSPEAK_API_KEY
     ```
+    The bundled ESP32 firmware listens on port `80` via `WebServer server(80);`. If you want another HTTP port, change it in [biofilm.ino](/d:/biofilim_risk_detection/biofilm/biofilm.ino) and reflash the board.
 3.  Ensure the following model files are present in the root directory:
     - `biofilm_risk_rf_regressor.pkl`
 
@@ -79,5 +82,5 @@ The script will:
 4.  Print the result to the console.
 5.  Upload the data to ThingSpeak.
 
-🔗[Link ](https://biofilim-risk-detection.vercel.app/)
+🔗[Link ](https://biofilm-risk-detection.vercel.app/)
 
