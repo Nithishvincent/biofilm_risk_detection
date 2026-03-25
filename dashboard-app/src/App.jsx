@@ -73,7 +73,9 @@ function predictBiofilmRisk(temp, ph, turbidity, flow, tds) {
   if (turbidity > 5) score += 25
 
   // Stagnation factor (low flow promotes attachment)
-  if (flow < 10) score += 25
+  // YF-S201 sensor outputs L/min; < 1 L/min indicates stagnation
+  if (flow < 1) score += 25
+  else if (flow < 3) score += 15
 
   // Nutrients/TDS
   if (tds > 500) score += 10
@@ -120,12 +122,14 @@ const getBiofilmStage = (risk) => {
 }
 
 // NEW: Comprehensive Solution Plan Generator
-function getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSince) {
+function getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSince, flow) {
   const solutions = []
 
   // Chemical Treatment - Low pH
+  // Industry rate: ~17g soda ash per 0.1 pH-point raise per 1000L
   if (ph !== '--' && Number(ph) < 6.5) {
-    const dosage = ((6.5 - Number(ph)) * waterVolume * 0.1).toFixed(2)
+    const phDelta = 6.5 - Number(ph)
+    const dosage = (phDelta * (waterVolume / 1000) * 170).toFixed(0)
     solutions.push({
       id: 'ph-low',
       category: 'Chemical Treatment',
@@ -133,24 +137,27 @@ function getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSince)
       priority: 'Critical',
       action: 'Add pH Increaser',
       chemical: 'Soda Ash (Sodium Carbonate)',
-      dosage: `${dosage} kg`,
+      dosage: `${dosage} g`,
       timeline: 'Immediate',
       steps: [
-        '1. Test current pH with calibrated meter',
-        `2. Dissolve ${dosage}kg sodium carbonate in 10L water`,
-        '3. Add slowly while circulating system',
-        '4. Wait 4 hours for complete mixing',
-        '5. Retest pH level',
-        '6. Monitor for 24 hours'
+        'Test current pH with calibrated meter',
+        `Dissolve ${dosage}g sodium carbonate in a bucket of water`,
+        'Add slowly while circulating system',
+        'Wait 4 hours for complete mixing',
+        'Retest pH level',
+        'Repeat with half-dose if pH is still below 6.5',
+        'Monitor for 24 hours'
       ],
-      safety: 'Wear gloves and eye protection',
+      safety: 'Wear gloves and eye protection. Avoid inhaling dust.',
       frequency: 'As needed based on testing'
     })
   }
 
   // Chemical Treatment - High pH
+  // Industry rate: ~25g sodium bisulfate per 0.1 pH-point drop per 1000L
   if (ph !== '--' && Number(ph) > 8.5) {
-    const dosage = ((Number(ph) - 8.5) * waterVolume * 0.08).toFixed(2)
+    const phDelta = Number(ph) - 8.5
+    const dosage = (phDelta * (waterVolume / 1000) * 250).toFixed(0)
     solutions.push({
       id: 'ph-high',
       category: 'Chemical Treatment',
@@ -158,24 +165,26 @@ function getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSince)
       priority: 'Critical',
       action: 'Add pH Decreaser',
       chemical: 'Sodium Bisulfate',
-      dosage: `${dosage} kg`,
+      dosage: `${dosage} g`,
       timeline: 'Immediate',
       steps: [
-        '1. Test current pH level',
-        `2. Dissolve ${dosage}kg sodium bisulfate in water`,
-        '3. Add slowly to system with circulation',
-        '4. Wait 6 hours for equilibration',
-        '5. Retest pH and adjust if needed',
-        '6. Monitor for 24 hours'
+        'Test current pH level with calibrated meter',
+        `Dissolve ${dosage}g sodium bisulfate in a bucket of water`,
+        'Add slowly to system with circulation running',
+        'Wait 6 hours for equilibration',
+        'Retest pH and adjust if needed',
+        'Repeat with half-dose if pH is still above 8.5',
+        'Monitor for 24 hours'
       ],
-      safety: 'CAUTION: Use protective equipment',
+      safety: 'CAUTION: Acidic compound. Wear gloves, goggles, and protective clothing.',
       frequency: 'As needed'
     })
   }
 
   // Turbidity Treatment
+  // Industry rate: 5–50 mg/L alum depending on turbidity; using 30g per 1000L as moderate dose
   if (turb !== '--' && Number(turb) > 5) {
-    const dosage = (waterVolume * 0.005).toFixed(2)
+    const dosage = ((waterVolume / 1000) * 30).toFixed(0)
     solutions.push({
       id: 'turbidity',
       category: 'Physical Cleaning',
@@ -183,18 +192,19 @@ function getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSince)
       priority: 'High',
       action: 'Clarification Treatment',
       chemical: 'Aluminum Sulfate (Alum)',
-      dosage: `${dosage} kg`,
+      dosage: `${dosage} g`,
       timeline: 'Within 12 hours',
       steps: [
-        '1. Stop circulation temporarily',
-        `2. Add ${dosage}kg alum coagulant`,
-        '3. Mix gently for 5 minutes',
-        '4. Allow settling for 2-3 hours',
-        '5. Filter settled solids',
-        '6. Backwash filters',
-        '7. Resume circulation and retest'
+        'Stop circulation temporarily',
+        `Pre-dissolve ${dosage}g alum in a bucket of water`,
+        'Pour slowly into the system',
+        'Mix gently for 5 minutes',
+        'Allow settling for 2–3 hours',
+        'Filter or vacuum settled solids',
+        'Backwash filters',
+        'Resume circulation and retest turbidity'
       ],
-      safety: 'Avoid inhalation of powder',
+      safety: 'Avoid inhalation of powder. Wear dust mask.',
       frequency: 'Weekly if turbidity persists'
     })
   }
@@ -212,14 +222,14 @@ function getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSince)
       dosage: 'Full cleaning protocol',
       timeline: days > 30 ? 'Immediate' : 'Within 24hrs',
       steps: [
-        '1. Shut down system safely',
-        '2. Drain to appropriate level',
-        '3. Scrub all surfaces',
-        '4. Remove biofilm deposits',
-        '5. Inspect pipes and sensors',
-        '6. Sanitize with chlorine (100 ppm, 2hrs)',
-        '7. Rinse thoroughly',
-        '8. Restart and log maintenance'
+        'Shut down system safely',
+        'Drain to appropriate level',
+        'Scrub all surfaces',
+        'Remove biofilm deposits',
+        'Inspect pipes and sensors',
+        'Sanitize with chlorine (100 ppm, 2hrs)',
+        'Rinse thoroughly',
+        'Restart and log maintenance'
       ],
       safety: 'Use PPE, ensure ventilation',
       frequency: 'Every 14 days minimum'
@@ -227,26 +237,28 @@ function getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSince)
   }
 
   // Shock Chlorination for High Risk
+  // Industry rate: ~8g calcium hypochlorite per 1000L for shock dosing (achieves ~50 ppm)
   if (riskScore > 60) {
-    const dosage = (waterVolume * 0.003).toFixed(2)
+    const dosage = ((waterVolume / 1000) * 8).toFixed(0)
     solutions.push({
       id: 'chlorination',
       category: 'Disinfection',
       issue: `High Biofilm Risk (${riskScore.toFixed(1)}%)`,
       priority: 'Critical',
       action: 'Shock Chlorination',
-      chemical: 'Calcium Hypochlorite',
-      dosage: `${dosage} kg (50-100 ppm)`,
+      chemical: 'Calcium Hypochlorite (65–70%)',
+      dosage: `${dosage} g (~50 ppm)`,
       timeline: 'Immediate',
       steps: [
-        `1. Dissolve ${dosage}kg chlorine in 20L water`,
-        '2. Add during off-peak hours',
-        '3. Maintain 50-100 ppm for 4-6 hours',
-        '4. Test chlorine levels hourly',
-        '5. Reduce to 1-3 ppm residual',
-        '6. Monitor biofilm risk daily for 1 week'
+        `Pre-dissolve ${dosage}g calcium hypochlorite in a bucket of water`,
+        'Add solution during off-peak hours',
+        'Circulate for even distribution',
+        'Maintain 50–100 ppm free chlorine for 4–6 hours',
+        'Test free chlorine levels hourly',
+        'Allow residual to drop to 1–3 ppm before normal use',
+        'Monitor biofilm risk daily for 1 week'
       ],
-      safety: 'TOXIC. Ventilated area only',
+      safety: 'TOXIC. Use only in ventilated areas. Wear gloves, goggles, and respirator. Never mix with acids.',
       frequency: 'Monthly or when risk >60%'
     })
   }
@@ -263,12 +275,12 @@ function getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSince)
       dosage: 'N/A',
       timeline: 'Ongoing',
       steps: [
-        '1. Test every 2 hours',
-        '2. Log all readings',
-        '3. Plot daily trends',
-        '4. Set deviation alerts',
-        '5. Adjust treatment promptly',
-        '6. Continue until risk <30% for 48hrs'
+        'Test every 2 hours',
+        'Log all readings',
+        'Plot daily trends',
+        'Set deviation alerts',
+        'Adjust treatment promptly',
+        'Continue until risk <30% for 48hrs'
       ],
       safety: 'N/A',
       frequency: 'Until risk normalizes'
@@ -287,14 +299,40 @@ function getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSince)
       dosage: 'N/A',
       timeline: Number(temp) > 35 ? 'Within 24hrs' : 'Within 1 week',
       steps: [
-        '1. Identify heat source',
-        '2. Install shade/insulation/chiller',
-        '3. For temp relief: add cool water',
-        '4. Monitor during peak heat',
-        '5. Aim to maintain <28°C'
+        'Identify heat source (sun exposure, nearby equipment, etc.)',
+        'Install shade structures, pipe insulation, or active chiller',
+        'For immediate relief: partially drain and add cool water',
+        'Monitor water temperature during peak heat hours',
+        'Target water temperature below 28°C'
       ],
-      safety: 'Avoid rapid temp changes',
+      safety: 'Avoid rapid temperature changes (>2°C/hr) to prevent thermal shock',
       frequency: 'Seasonal adjustment'
+    })
+  }
+
+  // Low Flow / Stagnation — primary biofilm risk factor
+  // YF-S201 sensor outputs L/min; < 1 L/min indicates near-stagnation
+  if (flow !== '--' && Number(flow) < 1) {
+    solutions.push({
+      id: 'stagnation',
+      category: 'System Modification',
+      issue: `Low Flow Rate (${flow} L/min)`,
+      priority: Number(flow) < 0.2 ? 'Critical' : 'High',
+      action: 'Restore Water Circulation',
+      chemical: 'N/A',
+      dosage: 'N/A',
+      timeline: 'Immediate',
+      steps: [
+        'Verify flow sensor is reading correctly (check for air bubbles or debris)',
+        'Check pump operation — restart if needed',
+        'Inspect pipes for blockages, kinks, or closed valves',
+        'Open all valves and dead-leg sections to eliminate stagnant zones',
+        'Flush dead-legs with fresh water for 5–10 minutes',
+        'Verify flow rate returns above 1 L/min',
+        'If stagnation persists, consider installing a circulation pump'
+      ],
+      safety: 'Stagnant water may harbor harmful bacteria. Use PPE when handling.',
+      frequency: 'Check daily — stagnation is the #1 biofilm risk factor'
     })
   }
 
@@ -471,10 +509,10 @@ export default function App() {
   // Auto-estimate volume from flow
   const estimateVolume = () => {
     if (flow !== '--') {
-      // Heuristic: Flow (L/min) * 60 min * 4 hours turnover
-      const est = Math.round(Number(flow) * 60 * 4)
+      // Heuristic: Flow (L/min) × 60 min = approximate system volume (1-hour turnover)
+      const est = Math.round(Number(flow) * 60)
       setWaterVolume(est)
-      alert(`Volume estimated at ${est} L based on current flow rate.`)
+      alert(`Volume estimated at ${est} L based on current flow rate (1-hour turnover).`)
     } else {
       alert("Cannot estimate volume: Flow rate data unavailable.")
     }
@@ -497,7 +535,7 @@ export default function App() {
   const contributingFactors = []
   if (data) {
     if (sensorEnabled.temp && temp !== '--' && Number(temp) > 30) contributingFactors.push('High Temp')
-    if (sensorEnabled.flow && flow !== '--' && Number(flow) < 10) contributingFactors.push('Low Flow')
+    if (sensorEnabled.flow && flow !== '--' && Number(flow) < 1) contributingFactors.push('Low Flow / Stagnation')
     if (sensorEnabled.turb && turb !== '--' && Number(turb) > 5) contributingFactors.push('High Turbidity')
     if (sensorEnabled.ph && ph !== '--' && (Number(ph) < 6.5 || Number(ph) > 8.5)) contributingFactors.push('Unstable pH')
   }
@@ -539,7 +577,7 @@ export default function App() {
   }, [lastMaintenance])
 
   // Comprehensive Solution Plan
-  const solutionPlan = (ph !== '--') ? getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSinceMaintenance) : []
+  const solutionPlan = (ph !== '--') ? getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSinceMaintenance, flow) : []
 
   // Chart Data
   const chartData = {
@@ -605,7 +643,7 @@ export default function App() {
     const v = Number(val)
     if (type === 'ph') return (v < 6.5 || v > 8.5) ? 'caution' : 'normal'
     if (type === 'temp') return (v > 30) ? 'caution' : 'normal'
-    if (type === 'flow') return (v < 60) ? 'caution' : 'normal'
+    if (type === 'flow') return (v < 1) ? 'caution' : 'normal'
     if (type === 'turb') return (v > 5) ? 'caution' : 'normal'
     if (type === 'tds') return (v > 500) ? 'caution' : 'normal'
     return 'normal' // default
