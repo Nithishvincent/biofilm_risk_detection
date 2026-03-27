@@ -372,7 +372,11 @@ export default function App() {
   }, [waterVolume])
 
   useEffect(() => {
-    localStorage.setItem('lastMaintenance', lastMaintenance)
+    if (lastMaintenance) {
+      localStorage.setItem('lastMaintenance', lastMaintenance)
+    } else {
+      localStorage.removeItem('lastMaintenance')
+    }
   }, [lastMaintenance])
 
   useEffect(() => {
@@ -417,10 +421,10 @@ export default function App() {
         setFeeds(json.feeds)
         setLastUpdate(new Date().toLocaleTimeString())
 
-        // Check if data is stale (> 60 seconds)
+        // Check if data is stale (> 45 seconds — test.py uploads every 16s)
         const lastTime = new Date(latest.created_at).getTime()
         const now = Date.now()
-        const isStale = (now - lastTime) > 60000
+        const isStale = (now - lastTime) > 45000
 
         // Check Status Code (Field 8) and Staleness
         // 0 = Manual Shutdown
@@ -481,7 +485,8 @@ export default function App() {
       )
       : 0
 
-  const riskPercent = (ph !== '--') ? Number(riskScore).toFixed(1) + '%' : '--%'
+  const hasAnySensor = ph !== '--' || temp !== '--' || turb !== '--' || tds !== '--' || flow !== '--'
+  const riskPercent = hasAnySensor ? Number(riskScore).toFixed(1) + '%' : '--%'
 
   // Detect if live ML model prediction is being used (field7 is populated by test.py)
   const isAiActive = !!(data && data.field7)
@@ -528,7 +533,7 @@ export default function App() {
   const biofilmStage = getBiofilmStage(riskScore)
 
   // System Health (Inverse of Risk for demo)
-  const healthPct = (ph !== '--') ? Number((100 - riskScore).toFixed(1)) : 0
+  const healthPct = hasAnySensor ? Number((100 - riskScore).toFixed(1)) : 0
   const healthColor = healthPct > 70 ? 'var(--success-gradient)' : healthPct > 40 ? 'var(--warning-gradient)' : 'var(--danger-gradient)'
 
   // Contributing Factors — only include enabled sensors
@@ -695,6 +700,7 @@ export default function App() {
     a.href = url
     a.download = `biofilm_data_${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
+    URL.revokeObjectURL(url)
   }
 
   const generatePDF = () => {
@@ -1040,7 +1046,19 @@ export default function App() {
         <div className="stat-card animate-slide-up stagger-4 hover-scale" style={{ animationDelay: '0.7s' }}>
           <h4>Avg. Risk (1h)</h4>
           <div className="icon-wrapper orange" style={{ marginBottom: '12px' }}><Activity size={20} /></div>
-          <div className="stat-value">{feeds.length > 0 ? (feeds.reduce((acc, f) => acc + (f.field7 ? Number(f.field7) : 0), 0) / feeds.length).toFixed(1) : '0.0'}%</div>
+          <div className="stat-value">{feeds.length > 0 ? (() => {
+            const risks = feeds.map(f => {
+              if (f.field7 && !isNaN(Number(f.field7))) return Number(f.field7)
+              return predictBiofilmRisk(
+                Number(f.field2 || 25) + offsets.temp,
+                Number(f.field1 || 7) + offsets.ph,
+                Number(f.field5 || 0),
+                Number(f.field4 || 100),
+                Number(f.field6 || 0) + offsets.tds
+              )
+            })
+            return (risks.reduce((a, b) => a + b, 0) / risks.length).toFixed(1)
+          })() : '0.0'}%</div>
           <div className="stat-sub">Recent Trend</div>
         </div>
 
@@ -1199,11 +1217,11 @@ export default function App() {
                 datasets: [{
                   label: 'Current Status',
                   data: [
-                    (Number(ph) / 14) * 100,
-                    (Number(temp) / 50) * 100,
-                    (Number(flow) / 100) * 100,
-                    (Number(turb) / 20) * 100,
-                    (Number(tds) / 1000) * 100
+                    ph !== '--' ? (Number(ph) / 14) * 100 : 0,
+                    temp !== '--' ? (Number(temp) / 50) * 100 : 0,
+                    flow !== '--' ? (Number(flow) / 100) * 100 : 0,
+                    turb !== '--' ? (Number(turb) / 20) * 100 : 0,
+                    tds !== '--' ? (Number(tds) / 1000) * 100 : 0
                   ],
                   backgroundColor: theme === 'dark' ? 'rgba(96, 165, 250, 0.2)' : 'rgba(37, 99, 235, 0.2)',
                   borderColor: theme === 'dark' ? '#60a5fa' : '#2563eb',
@@ -1762,7 +1780,7 @@ export default function App() {
                 ))}
 
                 <div style={{ padding: '14px 18px', borderRadius: '10px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', fontSize: '0.875rem' }}>
-                  <strong>🔄 Heuristic Fallback:</strong> When test.py is not running (field7 is missing), the dashboard uses a hand-crafted heuristic: Base=10, +20 for warm temp (20–35°C), +20 for neutral pH (6.5–8.0), +25 for turbidity {'>'} 5 NTU, +25 for flow {'<'} 10 L/min, +10 for TDS {'>'} 500 ppm. Capped at 100%. This gives plausible estimates but should not be used for production decisions.
+                  <strong>🔄 Heuristic Fallback:</strong> When test.py is not running (field7 is missing), the dashboard uses a hand-crafted heuristic: Base=10, +20 for warm temp (20–35°C), +20 for neutral pH (6.5–8.0), +25 for turbidity {'>'} 5 NTU, +25 for flow {'<'} 1 L/min (stagnation), +15 for flow {'<'} 3 L/min, +10 for TDS {'>'} 500 ppm. Capped at 100%. This gives plausible estimates but should not be used for production decisions.
                 </div>
               </div>
             )}

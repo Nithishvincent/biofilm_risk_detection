@@ -33,6 +33,10 @@ volatile uint32_t flowPulses = 0;
 float flowRate = 0;
 unsigned long lastFlowMillis = 0;
 
+/* ================= SENSOR READ TIMER ================= */
+unsigned long lastSensorReadMillis = 0;
+const unsigned long SENSOR_READ_INTERVAL = 1000; // Read sensors every 1s (non-blocking)
+
 /* ================= FLOW ISR ================= */
 void IRAM_ATTR flowISR() {
   flowPulses++;
@@ -91,7 +95,7 @@ void setup() {
 void loop() {
   server.handleClient();
 
-  /* ===== pH UART ===== */
+  /* ===== pH UART (always check — buffer may fill) ===== */
   if (Serial2.available()) {
     String data = Serial2.readStringUntil('\n');
     int s = data.indexOf("PH:");
@@ -101,80 +105,53 @@ void loop() {
     }
   }
 
-  /* ===== DHT11 ===== */
-  float t = dht.readTemperature();
-  float h = dht.readHumidity();
-  if (!isnan(t) && !isnan(h)) {
-    temperature = t;
-    humidity = h;
-  }
+  /* ===== Non-blocking sensor read (every SENSOR_READ_INTERVAL ms) ===== */
+  if (millis() - lastSensorReadMillis >= SENSOR_READ_INTERVAL) {
+    lastSensorReadMillis = millis();
 
-  /* ===== Analog - Turbidity (SEN0189) ===== */
-  // Raw ADC 0-4095 (12-bit). SEN0189: higher ADC = cleaner water.
-  // Approximate: NTU = 3000 * (1 - (adcRaw / 4095.0))
-  int rawTurb = analogRead(TURBIDITY_PIN);
-  turbidityNTU = max(0.0f, 3000.0f * (1.0f - (rawTurb / 4095.0f)));
-
-  /* ===== Analog - TDS (SEN0244) ===== */
-  // Raw ADC -> Voltage -> ppm using empirical formula
-  // V = adcRaw * (3.3 / 4095)
-  // ppm ≈ (133.42 * V^3 - 255.86 * V^2 + 857.39 * V) * 0.5
-  int rawTDS = analogRead(TDS_PIN);
-  float voltage = rawTDS * (3.3f / 4095.0f);
-  tdsValue_ppm = (133.42f * voltage * voltage * voltage
-                - 255.86f * voltage * voltage
-                + 857.39f * voltage) * 0.5f;
-  tdsValue_ppm = max(0.0f, tdsValue_ppm);
-
-  /* ===== Flow Rate (YF-S201 Hall-effect) ===== */
-  // YF-S201 calibration: 7.5 pulses per second = 1 L/min
-  // Measure pulses over 1 second window -> divide by 7.5 -> L/min
-  if (millis() - lastFlowMillis >= 1000) {
-    noInterrupts();
-    uint32_t pulses = flowPulses;
-    flowPulses = 0;
-    interrupts();
-    flowRate = pulses / 7.5f;  // Convert pulses/sec to L/min
-    lastFlowMillis = millis();
-  }
-
-  /* ===== Serial Output ===== */
-  Serial.print("pH: ");        Serial.print(phValue, 2);
-  Serial.print(" | T: ");      Serial.print(temperature, 1);
-  Serial.print(" | H: ");      Serial.print(humidity, 1);
-  Serial.print(" | Flow: ");   Serial.print(flowRate, 2); Serial.print(" L/min");
-  Serial.print(" | Turb: ");   Serial.print(turbidityNTU, 1); Serial.print(" NTU");
-  Serial.print(" | TDS: ");    Serial.println(tdsValue_ppm, 1); // ppm
-
-  /* ===== ThingSpeak Push (DISABLED - Python Script handles this) ===== */
-  /* 
-  if (millis() % 20000 < 1000) { // Simple non-blocking timer
-    ThingSpeak.setField(1, phValue);
-    ThingSpeak.setField(2, temperature);
-    ThingSpeak.setField(3, humidity);
-    ThingSpeak.setField(4, flowRate);
-    ThingSpeak.setField(5, turbidityNTU);
-    ThingSpeak.setField(6, tdsValue_ppm);
-    
-    float risk = 0;
-    if (phValue < 6.5 || phValue > 8.5) risk += 20;
-    if (temperature > 30) risk += 20;
-    if (turbidityNTU > 5) risk += 20;
-    if (flowRate < 10) risk += 20;
-    if (tdsValue_ppm > 500) risk += 20;
-    
-    ThingSpeak.setField(7, risk);
-    ThingSpeak.setField(8, 1); // 1 = Active/Healthy
-
-    int x = ThingSpeak.writeFields(channelID, writeAPIKey);
-    if(x == 200){
-      Serial.println("Channel update successful.");
+    /* ===== DHT11 ===== */
+    float t = dht.readTemperature();
+    float h = dht.readHumidity();
+    if (!isnan(t) && !isnan(h)) {
+      temperature = t;
+      humidity = h;
     }
-    else{
-      Serial.println("Problem updating channel. HTTP error code " + String(x));
-    }
-  }
-  */
 
-  delay(1000);
+    /* ===== Analog - Turbidity (SEN0189) ===== */
+    // Raw ADC 0-4095 (12-bit). SEN0189: higher ADC = cleaner water.
+    // Approximate: NTU = 3000 * (1 - (adcRaw / 4095.0))
+    int rawTurb = analogRead(TURBIDITY_PIN);
+    turbidityNTU = max(0.0f, 3000.0f * (1.0f - (rawTurb / 4095.0f)));
+
+    /* ===== Analog - TDS (SEN0244) ===== */
+    // Raw ADC -> Voltage -> ppm using empirical formula
+    // V = adcRaw * (3.3 / 4095)
+    // ppm ≈ (133.42 * V^3 - 255.86 * V^2 + 857.39 * V) * 0.5
+    int rawTDS = analogRead(TDS_PIN);
+    float voltage = rawTDS * (3.3f / 4095.0f);
+    tdsValue_ppm = (133.42f * voltage * voltage * voltage
+                  - 255.86f * voltage * voltage
+                  + 857.39f * voltage) * 0.5f;
+    tdsValue_ppm = max(0.0f, tdsValue_ppm);
+
+    /* ===== Flow Rate (YF-S201 Hall-effect) ===== */
+    // YF-S201 calibration: 7.5 pulses per second = 1 L/min
+    // Measure pulses over 1 second window -> divide by 7.5 -> L/min
+    if (millis() - lastFlowMillis >= 1000) {
+      noInterrupts();
+      uint32_t pulses = flowPulses;
+      flowPulses = 0;
+      interrupts();
+      flowRate = pulses / 7.5f;  // Convert pulses/sec to L/min
+      lastFlowMillis = millis();
+    }
+
+    /* ===== Serial Output ===== */
+    Serial.print("pH: ");        Serial.print(phValue, 2);
+    Serial.print(" | T: ");      Serial.print(temperature, 1);
+    Serial.print(" | H: ");      Serial.print(humidity, 1);
+    Serial.print(" | Flow: ");   Serial.print(flowRate, 2); Serial.print(" L/min");
+    Serial.print(" | Turb: ");   Serial.print(turbidityNTU, 1); Serial.print(" NTU");
+    Serial.print(" | TDS: ");    Serial.println(tdsValue_ppm, 1); // ppm
+  }
 }

@@ -114,7 +114,11 @@ class Simulator:
         self.ph = max(6.0, min(8.5, self.ph))
 
         self.temp += random.uniform(-0.5, 0.5)
+        self.hum += random.uniform(-1, 1)
+        self.hum = max(20, min(100, self.hum))
         self.turb = max(0, self.turb + random.uniform(-1, 1))
+        self.tds += random.uniform(-5, 5)
+        self.tds = max(0, min(1500, self.tds))
 
         self.steps += 1
         if self.steps > 20:

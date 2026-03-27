@@ -103,14 +103,19 @@ def generate_row():
     dist_temp = abs(temp - 30.0)
     risk_temp = max(0, 100 - (dist_temp * 5))
 
+    # 5. TDS Score — high dissolved solids provide nutrients for biofilm
+    risk_tds = min(100, (tds / 1000) * 100)
+
     # Weighted Sum
     # Flow and Turbidity are usually strong physical indicators
     # pH and Temp are biological enablers
+    # TDS indicates nutrient availability
     final_risk = (
-        (risk_flow * 0.35) + 
-        (risk_turb * 0.25) + 
-        (risk_ph * 0.25) + 
-        (risk_temp * 0.15)
+        (risk_flow * 0.30) + 
+        (risk_turb * 0.22) + 
+        (risk_ph * 0.22) + 
+        (risk_temp * 0.14) +
+        (risk_tds * 0.12)
     )
     
     # Add some random noise +/- 5%
