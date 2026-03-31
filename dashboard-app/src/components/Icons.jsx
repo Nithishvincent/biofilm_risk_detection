@@ -109,3 +109,14 @@ export const WifiOff = ({ size = 24, color = "currentColor", ...props }) => (
         <line x1="12" y1="20" x2="12.01" y2="20" />
     </svg>
 )
+
+export const ClipboardList = ({ size = 24, color = "currentColor", ...props }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+        <path d="M12 11h4" />
+        <path d="M12 16h4" />
+        <line x1="8" y1="11" x2="8.01" y2="11" />
+        <line x1="8" y1="16" x2="8.01" y2="16" />
+    </svg>
+)

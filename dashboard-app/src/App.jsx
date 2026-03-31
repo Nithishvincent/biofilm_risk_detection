@@ -29,7 +29,8 @@ import {
   Settings,
   FlaskConical,
   Wifi,
-  WifiOff
+  WifiOff,
+  ClipboardList
 } from './components/Icons'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -354,6 +355,17 @@ export default function App() {
     return saved ? JSON.parse(saved) : { ph: 0, temp: 0, tds: 0 }
   })
 
+  // Maintenance Log — persistent array of entries
+  const [maintenanceLog, setMaintenanceLog] = useState(() => {
+    try {
+      const saved = localStorage.getItem('maintenanceLog')
+      return saved ? JSON.parse(saved) : []
+    } catch { return [] }
+  })
+  const [showAddMaintenance, setShowAddMaintenance] = useState(false)
+  const [maintType, setMaintType] = useState('Cleaning')
+  const [maintNotes, setMaintNotes] = useState('')
+
   // Per-sensor enable/disable (flow defaults OFF — sensor isolated, saved for deployment)
   const [sensorEnabled, setSensorEnabled] = useState(() => {
     const saved = localStorage.getItem('sensorEnabled')
@@ -378,6 +390,37 @@ export default function App() {
       localStorage.removeItem('lastMaintenance')
     }
   }, [lastMaintenance])
+
+  useEffect(() => {
+    localStorage.setItem('maintenanceLog', JSON.stringify(maintenanceLog))
+  }, [maintenanceLog])
+
+  // Add a maintenance log entry
+  const addMaintenanceEntry = (type = 'Cleaning', notes = '') => {
+    const entry = {
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      type,
+      notes,
+      sensorSnapshot: {
+        ph: ph !== '--' ? Number(ph) : null,
+        temp: temp !== '--' ? Number(temp) : null,
+        turb: turb !== '--' ? Number(turb) : null,
+        tds: tds !== '--' ? Number(tds) : null,
+        flow: flow !== '--' ? Number(flow) : null,
+        risk: riskScore
+      }
+    }
+    setMaintenanceLog(prev => [entry, ...prev])
+    setLastMaintenance(new Date().toISOString())
+    return entry
+  }
+
+  const clearMaintenanceLog = () => {
+    if (confirm('Clear all maintenance log entries?')) {
+      setMaintenanceLog([])
+    }
+  }
 
   useEffect(() => {
     localStorage.setItem('calibOffsets', JSON.stringify(offsets))
@@ -826,7 +869,7 @@ export default function App() {
                 <small style={{ color: 'var(--text-muted)', fontWeight: 'normal', fontSize: '0.9rem' }}>Last: {daysSinceMaintenance}</small>
               </h4>
               <button
-                onClick={() => { setLastMaintenance(new Date().toISOString()); alert('Maintenance Logged!') }}
+                onClick={() => { addMaintenanceEntry('Quick Log', 'Logged via Settings'); alert('Maintenance Logged!') }}
                 style={{ width: '100%', padding: '12px', background: 'var(--success-gradient)', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)' }}
               >
                 <Check size={16} style={{ display: 'inline', marginRight: '6px' }} />
@@ -1691,6 +1734,149 @@ export default function App() {
           ))}
         </div>
       )}
+
+      {/* ====== MAINTENANCE LOG SECTION ====== */}
+      <div className="card rich-card animate-fade-in" style={{ marginTop: '32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div className={`icon-wrapper ${daysSinceMaintenance === 'Never' || (typeof daysSinceMaintenance === 'string' && parseInt(daysSinceMaintenance) > 14) ? 'red' : parseInt(daysSinceMaintenance) > 7 ? 'orange' : 'green'}`} style={{ marginBottom: 0, width: '40px', height: '40px' }}>
+              <ClipboardList size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0 }}>Maintenance Log</h3>
+              <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Track cleaning, treatments, and inspections · Last: <strong style={{ color: daysSinceMaintenance === 'Never' ? 'var(--danger)' : 'var(--text-main)' }}>{daysSinceMaintenance}</strong>
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => setShowAddMaintenance(!showAddMaintenance)}
+              style={{ padding: '8px 16px', background: 'var(--primary-gradient)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem', boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)' }}
+            >
+              {showAddMaintenance ? '✕ Cancel' : '+ Add Entry'}
+            </button>
+            {maintenanceLog.length > 0 && (
+              <button
+                onClick={clearMaintenanceLog}
+                style={{ padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}
+              >
+                Clear All
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Add Entry Form */}
+        {showAddMaintenance && (
+          <div className="maint-form" style={{ padding: '20px', borderRadius: '14px', background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(16, 185, 129, 0.04))', border: '1px solid rgba(37, 99, 235, 0.15)', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Type</label>
+                <select
+                  value={maintType}
+                  onChange={e => setMaintType(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--glass-border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: '0.9rem', cursor: 'pointer' }}
+                >
+                  <option>Cleaning</option>
+                  <option>Chemical Treatment</option>
+                  <option>Filter Replacement</option>
+                  <option>Inspection</option>
+                  <option>Shock Chlorination</option>
+                  <option>Pipe Flushing</option>
+                  <option>Sensor Calibration</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notes</label>
+                <input
+                  type="text"
+                  value={maintNotes}
+                  onChange={e => setMaintNotes(e.target.value)}
+                  placeholder="e.g., Full tank scrub + chlorine shock 50ppm"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--glass-border)', background: 'var(--bg-card)', color: 'var(--text-main)', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                onClick={() => {
+                  addMaintenanceEntry(maintType, maintNotes)
+                  setMaintNotes('')
+                  setShowAddMaintenance(false)
+                }}
+                style={{ padding: '10px 20px', background: 'var(--success-gradient)', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', fontSize: '0.9rem', boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)' }}
+              >
+                <Check size={14} style={{ display: 'inline', marginRight: '6px' }} /> Log Entry
+              </button>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Sensor snapshot will be saved automatically</span>
+            </div>
+          </div>
+        )}
+
+        {/* Log Table */}
+        {maintenanceLog.length > 0 ? (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="maint-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 4px', fontSize: '0.875rem' }}>
+              <thead>
+                <tr style={{ textAlign: 'left' }}>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', fontWeight: '600', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date & Time</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', fontWeight: '600', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Type</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', fontWeight: '600', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notes</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', fontWeight: '600', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Risk at Time</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', fontWeight: '600', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sensors</th>
+                </tr>
+              </thead>
+              <tbody>
+                {maintenanceLog.slice(0, 20).map(entry => {
+                  const d = new Date(entry.timestamp)
+                  const snap = entry.sensorSnapshot || {}
+                  const entryRisk = snap.risk ?? 0
+                  return (
+                    <tr key={entry.id} style={{ background: 'rgba(0,0,0,0.02)', borderRadius: '8px' }}>
+                      <td style={{ padding: '12px', borderRadius: '8px 0 0 8px', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: '600', color: 'var(--text-main)' }}>{d.toLocaleDateString()}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{d.toLocaleTimeString()}</div>
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', background: entry.type === 'Shock Chlorination' ? 'rgba(239,68,68,0.1)' : entry.type === 'Chemical Treatment' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)', color: entry.type === 'Shock Chlorination' ? '#ef4444' : entry.type === 'Chemical Treatment' ? '#f59e0b' : '#10b981' }}>
+                          {entry.type}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px', color: 'var(--text-muted)', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {entry.notes || '—'}
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        <span style={{ fontWeight: '700', color: entryRisk > 60 ? 'var(--danger)' : entryRisk > 30 ? 'var(--warning)' : 'var(--success)' }}>
+                          {entryRisk.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px', borderRadius: '0 8px 8px 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {snap.ph != null && <span style={{ marginRight: '8px' }}>pH:{snap.ph}</span>}
+                        {snap.temp != null && <span style={{ marginRight: '8px' }}>{snap.temp}°C</span>}
+                        {snap.turb != null && <span style={{ marginRight: '8px' }}>{snap.turb}NTU</span>}
+                        {snap.tds != null && <span>{snap.tds}ppm</span>}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            {maintenanceLog.length > 20 && (
+              <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '8px' }}>
+                Showing 20 of {maintenanceLog.length} entries
+              </p>
+            )}
+          </div>
+        ) : (
+          <div style={{ padding: '40px', textAlign: 'center', background: 'linear-gradient(135deg, rgba(100, 116, 139, 0.06), rgba(100, 116, 139, 0.02))', borderRadius: '14px', border: '1px dashed var(--glass-border)' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '12px' }}>📋</div>
+            <div style={{ fontWeight: '600', color: 'var(--text-muted)', marginBottom: '4px' }}>No maintenance records yet</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Click "+ Add Entry" to log your first cleaning or maintenance activity.</div>
+          </div>
+        )}
+      </div>
 
       <div className="footer">
         <p>Last updated: {lastUpdate} · Refreshes every 5s ·

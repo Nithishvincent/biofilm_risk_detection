@@ -64,6 +64,9 @@ FEATURES_ORDER = ["ph", "temperature", "humidity", "flow", "turbidity", "tds"]
 
 history_buffer = collections.deque(maxlen=SEQUENCE_LENGTH)
 
+# Configurable water system volume for dosage calculations
+WATER_VOLUME_LITERS = int(os.getenv("WATER_VOLUME_LITERS", "1000"))
+
 MODEL_LOADED = False
 try:
     predictor = HybridBiofilmPredictor()
@@ -81,6 +84,240 @@ if THINGSPEAK_API_KEY == "YOUR_API_KEY" or not THINGSPEAK_API_KEY:
     print("[WARN] ThingSpeak API key is not set or is using the default value in .env.")
 
 
+# =============================================================================
+# TREND-BASED EARLY WARNING SYSTEM
+# =============================================================================
+class TrendAnalyzer:
+    """Analyzes rate-of-change across recent readings to detect early warning
+    patterns that precede biofilm formation."""
+
+    # Feature indices in FEATURES_ORDER
+    IDX_PH = 0
+    IDX_TEMP = 1
+    IDX_FLOW = 3
+    IDX_TURB = 4
+    IDX_TDS = 5
+
+    # Thresholds
+    TURB_RISE_PCT = 20       # % increase over window
+    FLOW_DROP_PCT = 30       # % decrease over window
+    FLOW_STAGNATION = 1.0    # L/min — below this is stagnation
+    TDS_RISE_PCT = 15        # % increase over window
+    PH_DRIFT = 0.5           # pH units drift
+    TEMP_GROWTH_LOW = 25.0   # °C — biofilm growth zone
+    TEMP_GROWTH_HIGH = 35.0  # °C
+
+    def __init__(self, min_window=3):
+        self.min_window = min_window
+        self._prev_temp_in_zone = None
+
+    def analyze(self, buffer):
+        """Analyze the history buffer and return a list of trend alerts.
+
+        Each alert is a dict: {level, pattern, message}
+          level: 'CRITICAL', 'WARNING', 'ALERT'
+        """
+        alerts = []
+        buf_list = list(buffer)
+        if len(buf_list) < self.min_window:
+            return alerts
+
+        window = buf_list[-self.min_window:]
+        first = window[0]
+        last = window[-1]
+
+        # --- Rising Turbidity ---
+        if first[self.IDX_TURB] > 0:
+            turb_change = ((last[self.IDX_TURB] - first[self.IDX_TURB])
+                           / first[self.IDX_TURB]) * 100
+            if turb_change >= self.TURB_RISE_PCT:
+                alerts.append({
+                    "level": "WARNING",
+                    "pattern": "RISING_TURBIDITY",
+                    "message": f"Turbidity rising {turb_change:.1f}% "
+                               f"({first[self.IDX_TURB]:.1f} → {last[self.IDX_TURB]:.1f} NTU)"
+                })
+
+        # --- Falling Flow ---
+        if first[self.IDX_FLOW] > 0:
+            flow_change = ((first[self.IDX_FLOW] - last[self.IDX_FLOW])
+                           / first[self.IDX_FLOW]) * 100
+            if flow_change >= self.FLOW_DROP_PCT:
+                alerts.append({
+                    "level": "CRITICAL",
+                    "pattern": "FALLING_FLOW",
+                    "message": f"Flow dropped {flow_change:.1f}% "
+                               f"({first[self.IDX_FLOW]:.1f} → {last[self.IDX_FLOW]:.1f} L/min)"
+                })
+        if last[self.IDX_FLOW] < self.FLOW_STAGNATION:
+            alerts.append({
+                "level": "CRITICAL",
+                "pattern": "STAGNATION",
+                "message": f"Flow rate critically low: {last[self.IDX_FLOW]:.2f} L/min — stagnation risk"
+            })
+
+        # --- Rising TDS ---
+        if first[self.IDX_TDS] > 0:
+            tds_change = ((last[self.IDX_TDS] - first[self.IDX_TDS])
+                          / first[self.IDX_TDS]) * 100
+            if tds_change >= self.TDS_RISE_PCT:
+                alerts.append({
+                    "level": "WARNING",
+                    "pattern": "RISING_TDS",
+                    "message": f"TDS rising {tds_change:.1f}% "
+                               f"({first[self.IDX_TDS]:.0f} → {last[self.IDX_TDS]:.0f} ppm) — "
+                               f"mineral/nutrient buildup"
+                })
+
+        # --- pH Drift ---
+        ph_delta = abs(last[self.IDX_PH] - first[self.IDX_PH])
+        if ph_delta >= self.PH_DRIFT:
+            direction = "rising" if last[self.IDX_PH] > first[self.IDX_PH] else "falling"
+            alerts.append({
+                "level": "WARNING",
+                "pattern": "PH_DRIFT",
+                "message": f"pH {direction} rapidly: "
+                           f"{first[self.IDX_PH]:.2f} → {last[self.IDX_PH]:.2f} "
+                           f"(Δ{ph_delta:.2f} in {self.min_window} readings)"
+            })
+
+        # --- Temperature entered growth zone ---
+        current_in_zone = (self.TEMP_GROWTH_LOW <= last[self.IDX_TEMP] <= self.TEMP_GROWTH_HIGH)
+        prev_in_zone = (self.TEMP_GROWTH_LOW <= first[self.IDX_TEMP] <= self.TEMP_GROWTH_HIGH)
+        if current_in_zone and not prev_in_zone:
+            alerts.append({
+                "level": "ALERT",
+                "pattern": "TEMP_GROWTH_ZONE",
+                "message": f"Temperature entered biofilm growth zone: "
+                           f"{last[self.IDX_TEMP]:.1f}°C (25-35°C range)"
+            })
+
+        # --- Combined Red Flag: Flow↓ + Turbidity↑ ---
+        flow_dropping = (first[self.IDX_FLOW] > 0 and
+                         ((first[self.IDX_FLOW] - last[self.IDX_FLOW])
+                          / first[self.IDX_FLOW]) * 100 > 10)
+        turb_rising = (first[self.IDX_TURB] > 0 and
+                       ((last[self.IDX_TURB] - first[self.IDX_TURB])
+                        / first[self.IDX_TURB]) * 100 > 10)
+        if flow_dropping and turb_rising:
+            alerts.append({
+                "level": "CRITICAL",
+                "pattern": "COMBINED_RED_FLAG",
+                "message": "Flow decreasing + Turbidity increasing simultaneously — "
+                           "strong biofilm formation indicator"
+            })
+
+        # --- Combined: Flow↓ + TDS↑ (hard water + biofilm synergy) ---
+        tds_rising = (first[self.IDX_TDS] > 0 and
+                      ((last[self.IDX_TDS] - first[self.IDX_TDS])
+                       / first[self.IDX_TDS]) * 100 > 10)
+        if flow_dropping and tds_rising:
+            alerts.append({
+                "level": "CRITICAL",
+                "pattern": "SCALE_BIOFILM_SYNERGY",
+                "message": "Flow decreasing + TDS increasing — "
+                           "hard water scaling + biofilm synergy risk"
+            })
+
+        return alerts
+
+    @staticmethod
+    def print_alerts(alerts):
+        """Print trend alerts to console."""
+        if not alerts:
+            return
+        print(f"  ┌─ TREND ANALYSIS ({len(alerts)} alert{'s' if len(alerts) > 1 else ''}) ─┐")
+        for a in alerts:
+            icon = {"CRITICAL": "🔴", "WARNING": "⚠️", "ALERT": "⚡"}.get(a["level"], "ℹ️")
+            print(f"  │ {icon} [{a['level']}] {a['pattern']}: {a['message']}")
+        print(f"  └{'─' * 50}┘")
+
+
+# =============================================================================
+# CHEMICAL DOSAGE CALCULATOR
+# =============================================================================
+def calculate_dosage(sensor_data, risk_percent, water_volume_l=1000):
+    """Calculate recommended chemical dosages based on current sensor readings.
+
+    Returns a list of recommendation dicts:
+      {chemical, dosage, unit, reason}
+    """
+    recommendations = []
+    vol_factor = water_volume_l / 1000.0
+
+    ph = sensor_data.get("ph", 7.0)
+    turb = sensor_data.get("turbidity", 0)
+
+    # --- Chlorine / Disinfection ---
+    if risk_percent >= 60:
+        # Shock chlorination: calcium hypochlorite 8g/1000L (~50 ppm)
+        dose = round(8 * vol_factor, 1)
+        recommendations.append({
+            "chemical": "Calcium Hypochlorite (65-70%)",
+            "dosage": dose,
+            "unit": "g",
+            "reason": f"Shock chlorination — risk {risk_percent:.1f}% (≥60%)"
+        })
+    elif risk_percent >= 30:
+        # Preventive: sodium hypochlorite 10ml/1000L
+        dose = round(10 * vol_factor, 1)
+        recommendations.append({
+            "chemical": "Sodium Hypochlorite (12.5%)",
+            "dosage": dose,
+            "unit": "ml",
+            "reason": f"Preventive disinfection — risk {risk_percent:.1f}%"
+        })
+
+    # --- pH Adjustment ---
+    if ph < 6.5:
+        # Soda ash: 170g per 0.1 pH-point raise per 1000L
+        ph_delta = 6.5 - ph
+        dose = round(ph_delta * 170 * vol_factor, 0)
+        recommendations.append({
+            "chemical": "Soda Ash (Sodium Carbonate)",
+            "dosage": int(dose),
+            "unit": "g",
+            "reason": f"pH too low ({ph:.2f}) — raise to 6.5"
+        })
+    elif ph > 8.5:
+        # Sodium bisulfate: 250g per 0.1 pH-point drop per 1000L
+        ph_delta = ph - 8.5
+        dose = round(ph_delta * 250 * vol_factor, 0)
+        recommendations.append({
+            "chemical": "Sodium Bisulfate",
+            "dosage": int(dose),
+            "unit": "g",
+            "reason": f"pH too high ({ph:.2f}) — lower to 8.5"
+        })
+
+    # --- Turbidity (Alum) ---
+    if turb > 5:
+        # Aluminum sulfate: 30g/1000L for moderate turbidity
+        dose = round(30 * vol_factor, 0)
+        recommendations.append({
+            "chemical": "Aluminum Sulfate (Alum)",
+            "dosage": int(dose),
+            "unit": "g",
+            "reason": f"High turbidity ({turb:.1f} NTU > 5 NTU)"
+        })
+
+    return recommendations
+
+
+def print_dosage(recommendations):
+    """Print chemical dosage recommendations to console."""
+    if not recommendations:
+        print("  [DOSAGE] ✅ No chemical treatment required.")
+        return
+    print(f"  ┌─ CHEMICAL DOSAGE ({WATER_VOLUME_LITERS}L system) ─┐")
+    for r in recommendations:
+        print(f"  │ 💊 {r['chemical']}: {r['dosage']} {r['unit']} — {r['reason']}")
+    print(f"  └{'─' * 50}┘")
+
+
+# =============================================================================
+# SENSOR DATA
+# =============================================================================
 def get_sensor_data():
     try:
         print(f"[INFO] Attempting to fetch data from: {URL_SENSOR}...", end="\r")
@@ -137,6 +374,9 @@ class Simulator:
 sim = Simulator()
 SIMULATION_MODE = False
 
+# Instantiate the trend analyzer
+trend_analyzer = TrendAnalyzer(min_window=3)
+
 
 def send_to_thingspeak(data, risk_val, status_code, ensemble_preds=None):
     payload = {
@@ -167,6 +407,7 @@ def send_to_thingspeak(data, risk_val, status_code, ensemble_preds=None):
 
 
 print("\n[INFO] Starting Biofilm Risk Monitor (Hybrid Ensemble)...")
+print(f"[INFO] Water system volume: {WATER_VOLUME_LITERS} L (set WATER_VOLUME_LITERS env to change)")
 INTERVAL_SEC = 16
 
 try:
@@ -186,6 +427,10 @@ try:
 
         features = [raw_data[f] for f in FEATURES_ORDER]
         history_buffer.append(features)
+
+        # --- Trend Analysis (runs as soon as we have 3+ readings) ---
+        trend_alerts = trend_analyzer.analyze(history_buffer)
+        TrendAnalyzer.print_alerts(trend_alerts)
 
         risk = 0.0
         status_code = 1
@@ -216,6 +461,15 @@ try:
         else:
             print(f"[INFO] Gathering history... ({len(history_buffer)}/{SEQUENCE_LENGTH})")
             risk = 0
+
+        # --- Escalate status if critical trend alerts detected ---
+        critical_trends = [a for a in trend_alerts if a["level"] == "CRITICAL"]
+        if critical_trends and status_code < 2:
+            status_code = 2  # Bump to WARNING if trend analysis detects critical patterns
+
+        # --- Chemical Dosage Recommendations ---
+        dosage_recs = calculate_dosage(raw_data, risk, WATER_VOLUME_LITERS)
+        print_dosage(dosage_recs)
 
         send_to_thingspeak(raw_data, risk, status_code, ensemble_debug)
         time.sleep(INTERVAL_SEC)
