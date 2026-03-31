@@ -467,6 +467,10 @@ try:
         if critical_trends and status_code < 2:
             status_code = 2  # Bump to WARNING if trend analysis detects critical patterns
 
+        # --- Encode Simulation Mode ---
+        if SIMULATION_MODE:
+            status_code = -abs(status_code) if status_code != 0 else -1
+
         # --- Chemical Dosage Recommendations ---
         dosage_recs = calculate_dosage(raw_data, risk, WATER_VOLUME_LITERS)
         print_dosage(dosage_recs)

@@ -346,6 +346,8 @@ export default function App() {
   const [data, setData] = useState(null)
   const [feeds, setFeeds] = useState([])
   const [lastUpdate, setLastUpdate] = useState(null)
+  const [isSimulated, setIsSimulated] = useState(false)
+  const [showSimulatedData, setShowSimulatedData] = useState(false)
 
   const [waterVolume, setWaterVolume] = useState(() => Number(localStorage.getItem('waterVolume')) || 1000)
   const [lastMaintenance, setLastMaintenance] = useState(() => localStorage.getItem('lastMaintenance') || null)
@@ -470,12 +472,18 @@ export default function App() {
         const isStale = (now - lastTime) > 45000
 
         // Check Status Code (Field 8) and Staleness
+        // negative = Simulated Data
         // 0 = Manual Shutdown
-        // >60s = Timeout/Crash
-        const statusCode = Number(latest.field8)
+        const rawStatusCode = Number(latest.field8)
+        const isSimData = rawStatusCode < 0
+        setIsSimulated(isSimData)
+
+        const statusCode = Math.abs(rawStatusCode)
 
         if (statusCode === 0 || isStale) {
           setConnectionStatus('disconnected') // Consolidate to "Offline"
+        } else if (isSimData) {
+          setConnectionStatus('simulated') // Simulated Mode
         } else {
           setConnectionStatus('connected') // Active
         }
@@ -494,8 +502,11 @@ export default function App() {
     return () => clearInterval(interval)
   }, [])
 
+  const shouldShowData = !isSimulated || showSimulatedData
+
   // Derived Values — returns '--' if sensor is disabled
   const getVal = (field, offsetKey = null, sensorKey = null) => {
+    if (!shouldShowData) return '--'
     if (sensorKey && !sensorEnabled[sensorKey]) return '--'
     if (!data || !data[field]) return '--'
     let val = parseFloat(data[field])
@@ -514,7 +525,7 @@ export default function App() {
   // PRIORITIZE ML MODEL from Backend (Field 7)
   // If Field 7 is present, use it. Otherwise fallback to frontend heuristic.
   // Disabled sensors pass a 'neutral' value so they don't inflate risk.
-  const rawRisk = data && data.field7 ? Number(data.field7) : null
+  const rawRisk = shouldShowData && data && data.field7 ? Number(data.field7) : null
 
   const riskScore = (rawRisk !== null)
     ? rawRisk
@@ -528,7 +539,7 @@ export default function App() {
       )
       : 0
 
-  const hasAnySensor = ph !== '--' || temp !== '--' || turb !== '--' || tds !== '--' || flow !== '--'
+  const hasAnySensor = shouldShowData && (ph !== '--' || temp !== '--' || turb !== '--' || tds !== '--' || flow !== '--')
   const riskPercent = hasAnySensor ? Number(riskScore).toFixed(1) + '%' : '--%'
 
   // Detect if live ML model prediction is being used (field7 is populated by test.py)
@@ -627,16 +638,18 @@ export default function App() {
   // Comprehensive Solution Plan
   const solutionPlan = (ph !== '--') ? getSolutionPlan(ph, temp, turb, tds, riskScore, waterVolume, daysSinceMaintenance, flow) : []
 
+  const chartFeeds = shouldShowData ? feeds : []
+
   // Chart Data
   const chartData = {
-    labels: feeds.map(f => {
+    labels: chartFeeds.map(f => {
       const d = new Date(f.created_at)
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     }),
     datasets: [
       {
         label: 'Biofilm Risk %',
-        data: feeds.map(f => {
+        data: chartFeeds.map(f => {
           if (f.field7) return Number(f.field7) // Use ML Model History
           return predictBiofilmRisk(
             Number(f.field2) + offsets.temp,
@@ -653,7 +666,7 @@ export default function App() {
       },
       {
         label: 'System Health %',
-        data: feeds.map(f => {
+        data: chartFeeds.map(f => {
           const r = f.field7 ? Number(f.field7) : predictBiofilmRisk(
             Number(f.field2) + offsets.temp,
             Number(f.field1) + offsets.ph,
@@ -830,8 +843,8 @@ export default function App() {
           </div>
         </div>
         <div className="header-right">
-          <div className={`system-status ${connectionStatus === 'connected' ? 'system-active pulse-animation' : 'system-offline'}`}>
-            {connectionStatus === 'connected' ? '● System Active' : '● System Inactive (Last Logged)'}
+          <div className={`system-status ${connectionStatus === 'connected' ? 'system-active pulse-animation' : connectionStatus === 'simulated' ? 'system-simulated pulse-animation' : 'system-offline'}`}>
+            {connectionStatus === 'connected' ? '● System Active' : connectionStatus === 'simulated' ? '● System Simulated' : '● System Inactive'}
           </div>
           <div className="theme-toggle-wrapper" title="Toggle Theme">
             <input
@@ -945,6 +958,36 @@ export default function App() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isSimulated && (
+        <div style={{ padding: '16px', background: 'linear-gradient(135deg, rgba(245,158,11,0.1), rgba(239,68,68,0.05))', borderRadius: '12px', marginBottom: '24px', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h4 style={{ margin: 0, color: '#b45309', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={18} /> ESP32 is Disconnected
+            </h4>
+            <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+              The system is receiving simulated data over ThingSpeak for demonstration purposes.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>Show Simulated Data?</span>
+            <button
+              onClick={() => setShowSimulatedData(!showSimulatedData)}
+              style={{
+                width: '60px', height: '32px', borderRadius: '16px', border: 'none', cursor: 'pointer', position: 'relative',
+                background: showSimulatedData ? 'linear-gradient(135deg, #10b981, #059669)' : '#94a3b8',
+                transition: 'background 0.3s', boxShadow: showSimulatedData ? '0 0 8px rgba(16,185,129,0.4)' : 'none'
+              }}
+            >
+              <span style={{
+                position: 'absolute', top: '4px', left: showSimulatedData ? '32px' : '4px',
+                width: '24px', height: '24px', borderRadius: '50%', background: 'white',
+                transition: 'left 0.25s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+              }} />
+            </button>
           </div>
         </div>
       )}
@@ -1089,8 +1132,8 @@ export default function App() {
         <div className="stat-card animate-slide-up stagger-4 hover-scale" style={{ animationDelay: '0.7s' }}>
           <h4>Avg. Risk (1h)</h4>
           <div className="icon-wrapper orange" style={{ marginBottom: '12px' }}><Activity size={20} /></div>
-          <div className="stat-value">{feeds.length > 0 ? (() => {
-            const risks = feeds.map(f => {
+          <div className="stat-value">{chartFeeds.length > 0 ? (() => {
+            const risks = chartFeeds.map(f => {
               if (f.field7 && !isNaN(Number(f.field7))) return Number(f.field7)
               return predictBiofilmRisk(
                 Number(f.field2 || 25) + offsets.temp,
@@ -1130,7 +1173,7 @@ export default function App() {
           </div>
         </div>
 
-        {feeds.length > 0 ? (
+        {chartFeeds.length > 0 ? (
           <div className="chart-wrapper">
             <Line data={chartData} options={chartOptions} />
           </div>

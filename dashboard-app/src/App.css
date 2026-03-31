@@ -263,6 +263,12 @@ body {
   border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
+.system-simulated {
+  background: var(--warning-light);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
 [data-theme="dark"] .system-active {
   background: rgba(16, 185, 129, 0.12);
   color: #34d399;
@@ -279,6 +285,12 @@ body {
   background: rgba(239, 68, 68, 0.12);
   color: #f87171;
   border-color: rgba(239, 68, 68, 0.2);
+}
+
+[data-theme="dark"] .system-simulated {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.2);
 }
 
 [data-theme="dark"] .header {
